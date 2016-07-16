@@ -1,0 +1,5 @@
+# Ignore data files and plots produced by running examples.
+*.hdf5
+*.dat
+*.pdf
+*.log

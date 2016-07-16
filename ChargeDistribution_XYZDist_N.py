@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Author: Craig Lage, NYU; 
+#Author: Craig Lage, NYU;
 #Date: 26-Jan-15
 
 #This program plots the Poisson equation solutions from the C++ Poisson solver
@@ -12,15 +12,15 @@ import sys, time, h5py
 #****************SUBROUTINES*****************
 class Array3dHDF5Elec(object):
     def __init__(self, dir, filebase, n):
-        elecfile = dir+'/'+filebase+'_'+str(n)+'_Elec'
+        elecfile = dir+'/'+filebase+'_'+str(n)+'_Elec' + '.hdf5'
         hdfelec = h5py.File(elecfile,'r')
-        holefile = dir+'/'+filebase+'_'+str(n)+'_Hole'
+        holefile = dir+'/'+filebase+'_'+str(n)+'_Hole' + '.hdf5'
         hdfhole = h5py.File(holefile,'r')
         Dimension = hdfelec[hdfelec.items()[0][0]].attrs[u'Dimension']
         self.nx=Dimension[0]
         self.ny=Dimension[1]
         self.nz=Dimension[2]
-        
+
         Lower_Left = hdfelec[hdfelec.items()[0][0]].attrs[u'Lower_Left']
         self.xmin=Lower_Left[0]
         self.ymin=Lower_Left[1]
@@ -30,11 +30,11 @@ class Array3dHDF5Elec(object):
         self.xmax=Upper_Right[0]
         self.ymax=Upper_Right[1]
         self.zmax=100.0
-        
+
         self.dx=(self.xmax-self.xmin)/self.nx
         self.dy=(self.ymax-self.ymin)/self.ny
         self.dzp=(self.zmax-self.zmin)/(ConfigData["Nx"] * ConfigData["ScaleFactor"] + 1)
-        
+
         self.x=linspace(self.xmin+self.dx/2,self.xmax-self.dx/2,self.nx)
         self.y=linspace(self.ymin+self.dy/2,self.ymax-self.dy/2,self.ny)
         self.zp=linspace(self.zmin+self.dzp/2,self.zmax-self.dzp/2,(ConfigData["Nx"] * ConfigData["ScaleFactor"] + 1))[0:32*ConfigData["ScaleFactor"]]
@@ -74,7 +74,7 @@ class Array3dHDF5Elec(object):
         self.Channelkmin = ZIndex(ConfigData["GateOxide"] * EPSILON_SI / EPSILON_OX)
 
         self.elec=array(hdfelec[hdfelec.items()[0][0]])
-        self.hole=array(hdfhole[hdfhole.items()[0][0]])        
+        self.hole=array(hdfhole[hdfhole.items()[0][0]])
 
 def ReadConfigFile(filename):
     # This reads the config file for the necessary settings
@@ -143,7 +143,7 @@ outputfiledir = ConfigData["outputfiledir"]
 # This holds all of the data
 ScaleFactor = ConfigData["ScaleFactor"]
 GridsPerPixel = ConfigData["GridsPerPixel"]
-dat = Array3dHDF5Elec(outputfiledir, outputfilebase, run) 
+dat = Array3dHDF5Elec(outputfiledir, outputfilebase, run)
 
 nxx = dat.nx - 1
 nyy = dat.ny - 1
@@ -186,7 +186,7 @@ for i, plotdata in enumerate(plotdatas):
 
     if i == 1:
         nxcenter += ScaleFactor * GridsPerPixel / 2
-        nycenter += ScaleFactor * GridsPerPixel / 2        
+        nycenter += ScaleFactor * GridsPerPixel / 2
 
     fig = figure(figsize = (12,12))
     suptitle("%s Charge Distribution"%carriers[i], fontsize = 36)
@@ -265,10 +265,10 @@ for i, plotdata in enumerate(plotdatas):
         ax6.plot(dat.z[:],plotarray, label = '(X,Y) = (%.2f,%.2f)'%(dat.x[nxcenter],dat.y[nycenter]))
     if i == 1:
         plotarray = log10(plotdata[nxcenter,nycenter,:]+0.01)
-        ax6.plot(dat.z[:],plotarray, label = '(X,Y) = (%.2f,%.2f)'%(dat.x[nxcenter],dat.y[nycenter]))        
-        nycenter -= ScaleFactor * GridsPerPixel / 2        
+        ax6.plot(dat.z[:],plotarray, label = '(X,Y) = (%.2f,%.2f)'%(dat.x[nxcenter],dat.y[nycenter]))
+        nycenter -= ScaleFactor * GridsPerPixel / 2
         plotarray = log10(plotdata[nxcenter,nycenter,:]+0.01)
-        ax6.plot(dat.z[:],plotarray, label = '(X,Y) = (%.2f,%.2f)'%(dat.x[nxcenter],dat.y[nycenter]))        
+        ax6.plot(dat.z[:],plotarray, label = '(X,Y) = (%.2f,%.2f)'%(dat.x[nxcenter],dat.y[nycenter]))
         legend(bbox_to_anchor=(1.05, 0.5), loc=2, fontsize = 9)
     ax6.set_ylabel("Log Charge Density")
     ax6.set_xlim(ax6.get_xlim()[::-1])
@@ -276,9 +276,3 @@ for i, plotdata in enumerate(plotdatas):
     ax6.set_xlabel("Z ( Microns)")
     savefig(outputfiledir+"/plots/%sDistribution_XYZ_%d.pdf"%(carriers[i],run))
     close(fig)
-
-
-
-
-
-

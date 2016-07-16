@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Author: Craig Lage, NYU; 
+#Author: Craig Lage, NYU;
 #Date: 16-Nov-15
 
 #This program plots the pixel area plots from the Poisson CCD solver
@@ -225,7 +225,7 @@ def ReadAreaFile(filename, nx, ny):
         j = int(items[1])
         area[i,j] = float(items[2])
     return area
-                 
+
 def ReadVertexFile(filename, configdata, poly):
     file = open(filename, 'r')
     lines = file.readlines()
@@ -245,7 +245,7 @@ def ReadVertexFile(filename, configdata, poly):
         for j in range(Ny):
             poly[i][j].Sort()
     return
-                 
+
 def CreatePolyList(nx, ny):
     polylist = [] # This is the undistorted pixels
     for i in range(nx):
@@ -267,7 +267,7 @@ def FillUndistortedPolyList(configdata, poly):
     for i in range(nx):
         for j in range(ny):
             xcenter = configdata["PixelBoundaryLowerLeft"][0] + (i + 0.5) * pixelsize
-            ycenter = configdata["PixelBoundaryLowerLeft"][1] + (j + 0.5) * pixelsize        
+            ycenter = configdata["PixelBoundaryLowerLeft"][1] + (j + 0.5) * pixelsize
             # First the corners
             for xsign in [-1.0,1.0]:
                 for ysign in [-1.0,1.0]:
@@ -298,12 +298,12 @@ def FillPolyShiftsList(configdata, poly0, polyq, polyd):
         for j in range(ny):
             for k in range(poly0[i][j].npoints):
                 dx = (polyq[i][j].pointlist[k].x - poly0[i][j].pointlist[k].x) / float(numelec)
-                dy = (polyq[i][j].pointlist[k].y - poly0[i][j].pointlist[k].y) / float(numelec)                
+                dy = (polyq[i][j].pointlist[k].y - poly0[i][j].pointlist[k].y) / float(numelec)
                 point = Point(dx, dy)
                 polyd[i][j].AddPoint(point)
     return
 
-def FillModelPolyList(configdata, charges, poly0, polyd, polym): 
+def FillModelPolyList(configdata, charges, poly0, polyd, polym):
     # Calculates the modeled poly shapes, given the charges,
     # The undistorted polys, and the poly shifts
     nx = configdata["PixelBoundaryNx"]
@@ -314,7 +314,7 @@ def FillModelPolyList(configdata, charges, poly0, polyd, polym):
         for j in range(ny):
             for k in range(poly0[i][j].npoints):
                 x = poly0[i][j].pointlist[k].x
-                y = poly0[i][j].pointlist[k].y                                         
+                y = poly0[i][j].pointlist[k].y
                 point = Point(x, y)
                 polym[i][j].AddPoint(point)
 
@@ -323,22 +323,22 @@ def FillModelPolyList(configdata, charges, poly0, polyd, polym):
                     if charges[chargei, chargej] == 0:
                         continue
                     ii = i - (chargei - nxcenter)
-                    jj = j - (chargej - nycenter)                        
+                    jj = j - (chargej - nycenter)
                     if ii < 0 or ii > (nx - 1) or jj < 0 or jj > (ny - 1):
                         continue
                     for k in range(poly0[i][j].npoints):
                         dx = polyd[ii][jj].pointlist[k].x * charges[chargei, chargej]
                         dy = polyd[ii][jj].pointlist[k].y * charges[chargei, chargej]
                         polym[i][j].pointlist[k].x += dx
-                        polym[i][j].pointlist[k].y += dy                            
+                        polym[i][j].pointlist[k].y += dy
     return
-    
+
 def PlotPixels(ax, title, poly):
     ax.set_title(title)
     for i in range(NxCenter-PlotDelta, NxCenter+PlotDelta+1):
         ax.plot([10.0 + 10.0 * i, 10.0 + 10.0 * i], [40.0, 70.0], color = 'black', ls = '--')
     for j in range(NyCenter-PlotDelta, NyCenter+PlotDelta+1):
-        ax.plot([40.0, 70.0], [10.0 + 10.0 * j, 10.0 + 10.0 * j], color = 'black', ls = '--') 
+        ax.plot([40.0, 70.0], [10.0 + 10.0 * j, 10.0 + 10.0 * j], color = 'black', ls = '--')
 
     for i in range(NxCenter-PlotDelta, NxCenter+PlotDelta+1):
         for j in range(NyCenter-PlotDelta, NyCenter+PlotDelta+1):
@@ -346,11 +346,11 @@ def PlotPixels(ax, title, poly):
             ys = []
             for k in range(NumAngles):
                 xs.append(poly[i][j].pointlist[k].x)
-                ys.append(poly[i][j].pointlist[k].y)            
+                ys.append(poly[i][j].pointlist[k].y)
             xs.append(poly[i][j].pointlist[0].x)
-            ys.append(poly[i][j].pointlist[0].y)            
+            ys.append(poly[i][j].pointlist[0].y)
             ax.plot(xs, ys, lw = 0.5)
-            area = poly[i][j].Area()            
+            area = poly[i][j].Area()
 
             textcolor = 'black'
             if charges[i,j] > 0:
@@ -372,22 +372,22 @@ def CalculatePixelErrors(configdata, poly1, poly2):
     for i in range(nx):
         for j in range(ny):
             area1 = poly1[i][j].Area()
-            area2 = poly2[i][j].Area()            
+            area2 = poly2[i][j].Area()
             area_error = abs(area1 - area2) / Area_0
             AveAreaError += area_error
             if area_error > WCAreaError:
                 WCAreaError = area_error
             for k in range(poly1[i][j].npoints):
                 x1 = poly1[i][j].pointlist[k].x
-                y1 = poly1[i][j].pointlist[k].y                
+                y1 = poly1[i][j].pointlist[k].y
                 x2 = poly2[i][j].pointlist[k].x
-                y2 = poly2[i][j].pointlist[k].y                
+                y2 = poly2[i][j].pointlist[k].y
                 vertex_error = (x1 - x2)**2 + (y1 - y2)**2
                 AveVertexError += vertex_error
                 if vertex_error > WCVertexError:
                     WCVertexError = vertex_error
     AveAreaError /= float(nx * ny)
-    AveVertexError /= float(nx * ny * poly1[0][0].npoints)    
+    AveVertexError /= float(nx * ny * poly1[0][0].npoints)
 
     return [AveAreaError, WCAreaError, AveVertexError, WCVertexError]
 
@@ -419,7 +419,7 @@ filedir2 = ConfigData2["outputfiledir"]
 # Create the polygon lists
 poly0 = CreatePolyList(Nx, Ny) # Undistorted polygons
 polyq = CreatePolyList(Nx, Ny) # Polygons with NumElec in central pixel
-polyd = CreatePolyList(Nx, Ny) # Polygon deltas per electron 
+polyd = CreatePolyList(Nx, Ny) # Polygon deltas per electron
 polym = CreatePolyList(Nx, Ny) # Modeled polygon shapes
 polys = CreatePolyList(Nx, Ny) # Simulated polygon shapes
 
@@ -427,9 +427,9 @@ polys = CreatePolyList(Nx, Ny) # Simulated polygon shapes
 FillUndistortedPolyList(ConfigData1, poly0)
 
 # Read in the distorted polygons
-filename1 = filedir1 + '/' + filebase1 +'_0_Vertices'
+filename1 = filedir1 + '/' + filebase1 +'_0_Vertices' + '.dat'
 ReadVertexFile(filename1, ConfigData1, polyq)
-filename2 = filedir2 + '/' + filebase2 +'_0_Vertices'
+filename2 = filedir2 + '/' + filebase2 +'_0_Vertices' + '.dat'
 ReadVertexFile(filename2, ConfigData2, polys)
 
 # Calculate the pixel shifts
@@ -446,7 +446,7 @@ for i in range(ConfigData2["NumberofFilledWells_0"]):
     charges[chargei, chargej] = charge
 
 # Now build the modeled polygons
-FillModelPolyList(ConfigData1, charges, poly0, polyd, polym) 
+FillModelPolyList(ConfigData1, charges, poly0, polyd, polym)
 
 # Now calculate the polygon errors
 [AveAreaError, WCAreaError, AveVertexError, WCVertexError] = CalculatePixelErrors(ConfigData2, polym, polys)
@@ -464,5 +464,3 @@ PlotPixels(ax1, "Simulated Pixels", polys)
 ax2=axes([0.50,0.40,0.48,0.48],aspect=1)
 PlotPixels(ax2, "Modeled Pixels", polym)
 savefig(filedir2+"/plots/PixelModel_SupTest.pdf")
-
-

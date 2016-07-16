@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Author: Craig Lage, NYU; 
+#Author: Craig Lage, NYU;
 #Date: 16-Nov-15
 
 #This program plots the pixel area plots from the Poisson CCD solver
@@ -77,10 +77,10 @@ def ReadAreaFile(filename, nx, ny):
         j = int(items[1])
         area[i,j] = float(items[2])
     return area
-                 
+
 def ReadVertexFile(filename, nx, ny, NumAngles):
     vx = zeros([nx, ny, NumAngles])
-    vy = zeros([nx, ny, NumAngles])    
+    vy = zeros([nx, ny, NumAngles])
     file = open(filename, 'r')
     lines = file.readlines()
     file.close()
@@ -102,14 +102,14 @@ def ReadVertexFile(filename, nx, ny, NumAngles):
             j = 0
             i += 1
             lastx = x
-            lasty = y            
+            lasty = y
 
         #print i,j,k
         vx[i,j,k] = float(items[3])
-        vy[i,j,k] = float(items[4])        
+        vy[i,j,k] = float(items[4])
         k += 1
     return (vx, vy)
-                 
+
 
 #****************MAIN PROGRAM*****************
 
@@ -133,14 +133,14 @@ NumElec = ConfigData["CollectedCharge_0_0"]
 
 PlotDelta = int(sys.argv[3])
 
-filename = outputfiledir + '/' + outputfilebase +'_%d_Area'%run
+filename = outputfiledir + '/' + outputfilebase +'_%d_Area'%run + '.dat'
 
 area = ReadAreaFile(filename, Nx, Ny)
 figure()
 subplot(1,1,1,aspect = 1)
 title("Pixel Area: %d e-"%NumElec)
 
-filename = outputfiledir + '/' + outputfilebase +'_%d_Vertices'%run
+filename = outputfiledir + '/' + outputfilebase +'_%d_Vertices'%run + '.dat'
 
 (vx, vy) = ReadVertexFile(filename, Nx, Ny, NumAngles)
 
@@ -154,7 +154,7 @@ title("Pixel Vertices: %d e-"%NumElec)
 for i in range(NxCenter-PlotDelta, NxCenter+PlotDelta+1):
     plot([XCenter+PixelSize*(i-NxCenter-0.5), XCenter+PixelSize*(i-NxCenter-0.5)], [LineYMin, LineYMax], color = 'black', ls = '--')
 for j in range(NyCenter-PlotDelta, NyCenter+PlotDelta+1):
-    plot([LineXMin, LineXMax], [YCenter+PixelSize*(j-NyCenter-0.5), YCenter+PixelSize*(j-NyCenter-0.5)], color = 'black', ls = '--') 
+    plot([LineXMin, LineXMax], [YCenter+PixelSize*(j-NyCenter-0.5), YCenter+PixelSize*(j-NyCenter-0.5)], color = 'black', ls = '--')
 
 
 for i in range(NxCenter-PlotDelta, NxCenter+PlotDelta+1):

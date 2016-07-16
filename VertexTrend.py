@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Author: Craig Lage, NYU; 
+#Author: Craig Lage, NYU;
 #Date: 16-Nov-15
 
 #This program plots the pixel area plots from the Poisson CCD solver
@@ -78,11 +78,11 @@ def ReadAreaFile(filename, nx, ny):
         j = int(items[1])
         area[i,j] = float(items[2])
     return area
-                 
+
 def ReadVertexFile(filename, nx, ny, NumAngles):
     vx = zeros([nx, ny, NumAngles])
     vy = zeros([nx, ny, NumAngles])
-    theta = zeros([nx, ny, NumAngles])    
+    theta = zeros([nx, ny, NumAngles])
     file = open(filename, 'r')
     lines = file.readlines()
     file.close()
@@ -102,7 +102,7 @@ def ReadVertexFile(filename, nx, ny, NumAngles):
         #print i,j,k
         theta[i,j,k] = float(items[2])
         vx[i,j,k] = float(items[3])
-        vy[i,j,k] = float(items[4])        
+        vy[i,j,k] = float(items[4])
         k += 1
     return (theta, vx, vy)
 
@@ -130,7 +130,7 @@ for dir in dirs:
     NumElec = ConfigData["CollectedCharge_0_0"]
     NumAngles = 4 * ConfigData["NumVertices"] + 4
 
-    filename = outputfiledir + '/' + outputfilebase +'_0_Vertices'
+    filename = outputfiledir + '/' + outputfilebase +'_0_Vertices' + '.dat'
 
     (thetas, vxs, vys) = ReadVertexFile(filename, Nx, Ny, NumAngles)
 
@@ -139,10 +139,10 @@ for dir in dirs:
         if theta > 0:
             if StartedNegatives:
                 Center_UR_xs.append(Vx0 - vxs[4,4,i+32])
-                Center_UR_ys.append(Vy0 - vys[4,4,i+32])            
+                Center_UR_ys.append(Vy0 - vys[4,4,i+32])
                 Center_R_xs.append(Vx0 - vxs[4,4,i+4])
                 Center_R_ys.append(Vy0 - 5.0 - vys[4,4,i+4])
-                #Center_R_ys.append(Vy0 - 5.0 + 5.0 * tan(9.0 * pi / 256.0) - vys[4,4,i+4])                            
+                #Center_R_ys.append(Vy0 - 5.0 + 5.0 * tan(9.0 * pi / 256.0) - vys[4,4,i+4])
                 break
             else:
                 continue
@@ -156,10 +156,10 @@ for dir in dirs:
                 #if dir == "data/run6":
                 #    print theta
                 #    print vxs[5,4,i+32]
-                #    print vys[5,4,i+32]                    
+                #    print vys[5,4,i+32]
                 #    sys.exit()
                 Plus_Y_UR_xs.append(Vx0 - vxs[4,5,i+32])
-                Plus_Y_UR_ys.append(Vy0 + 10.0 - vys[4,5,i+32])            
+                Plus_Y_UR_ys.append(Vy0 + 10.0 - vys[4,5,i+32])
                 break
             else:
                 continue

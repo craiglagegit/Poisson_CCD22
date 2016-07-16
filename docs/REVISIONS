@@ -169,12 +169,22 @@ Poisson_CCD_Hole2 - Same as Hole1, but added a thicker FieldOxide.  This didn't 
 
 Poisson_CCD_Hole3 - Added a boolean hole_clamp array to allow me to clamp the potential to <= Vchannelstop wherever hole_clamp = true.  Poisson_CCD_Hole3_BF1 gave good correlation results.
 
-Poisson_CCD_Hole4 - Same as Hole3, but added an AdjustHoleClamp routine that tries to fix the discontinuities in the E-Field at the boundary of the hole_clamp region. 
+Poisson_CCD_Hole4 - Same as Hole3, but added an AdjustHoleClamp routine that tries to fix the discontinuities in the E-Field at the boundary of the hole_clamp region.
 
 Poisson_CCD_Hole5 - Extension of Hole1/2, eliminating the thicker field oxide, and using the insights in how to set the initial hole concentrations and adjust only the edges.
 
 Poisson_CCD_Hole6 - Extension of Hole5, with a better method of identifying the edges.  This worked, and gave results very similar to Hole1/2, but was rapidly growing in complexity, so I am going back to the Hole1/2 scheme of adjusting the hole desnity everywhere in the CS region.
 
-Poisson_CCD_Hole7 - Back to the scheme of Hole 1/2, with some of the enhancements from Hole6. With 20 iterations before starting, this seems to work reasonably well. Launched Poisson_CCD_Hole7_BF1 (0.09 um GOX) and Poisson_CCD_Hole7_BF2 (0.14 um Gox).  This code is now giving the best fits yet in terms of simultaneously fitting the spot size slopes (with two different values of VBB) and the correlation measurements. 
+Poisson_CCD_Hole7 - Back to the scheme of Hole 1/2, with some of the enhancements from Hole6. With 20 iterations before starting, this seems to work reasonably well. Launched Poisson_CCD_Hole7_BF1 (0.09 um GOX) and Poisson_CCD_Hole7_BF2 (0.14 um Gox).  This code is now giving the best fits yet in terms of simultaneously fitting the spot size slopes (with two different values of VBB) and the correlation measurements.
 
 Poisson_CCD_Hole8 - Attempting to put the AdjustHoles routine deeper into the multi-grid flow, so it can be done at lower resolutions and propagated up.
+
+## Changes by David Kirkby based on the hole7 branch
+
+- Use .hdf5 and .dat extensions for all output files.
+- Add git rules to ignore binary outputs.
+- Add VerboseLevel config option and be less verbose by default.
+- Fix compiler warning.
+- Add documentation page describing output files.
+- Add some plot axis labels.
+- Fix plotting crash when NumElec = 0.

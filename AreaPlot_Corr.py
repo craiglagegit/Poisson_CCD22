@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Author: Craig Lage, NYU; 
+#Author: Craig Lage, NYU;
 #Date: 16-Nov-15
 
 #This program plots the pixel area plots from the Poisson CCD solver
@@ -77,7 +77,7 @@ def ReadAreaFile(filename, nx, ny):
         j = int(items[1])
         area[i,j] = float(items[2])
     return area
-                 
+
 
 #****************MAIN PROGRAM*****************
 
@@ -98,7 +98,7 @@ NxCenter = 4
 NyCenter = 4
 Area_0 = 100.0
 
-filename = outputfiledir + '/' + outputfilebase +'_%d_Area'%step
+filename = outputfiledir + '/' + outputfilebase +'_%d_Area'%step+'.dat'
 
 area = ReadAreaFile(filename, Nx, Ny)
 
@@ -183,7 +183,7 @@ title("Pixel Area: %d e-"%NumElec)
 for i in range(Nx+1):
     plot([10.0 + 10.0 * i, 10.0 + 10.0 * i], [10.0, 100.0], color = 'black')
 for j in range(Ny+1):
-    plot([10.0, 100.0], [10.0 + 10.0 * j, 10.0 + 10.0 * j], color = 'black') 
+    plot([10.0, 100.0], [10.0 + 10.0 * j, 10.0 + 10.0 * j], color = 'black')
 for i in range(Nx):
     for j in range(Ny):
         if i == NxCenter and j == NyCenter:
