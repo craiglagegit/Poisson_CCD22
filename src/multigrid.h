@@ -38,7 +38,7 @@ class MultiGrid
  public:
 
   double w;		// Successive Over-Relaxation factor
-  int ncycle;		// Number of SOR sysles at each resolution
+  int ncycle;		// Number of SOR cycles at each resolution
   int iterations;		// Number of VCycles
 
   int ScaleFactor;       // Power of 2 that sets the grid size
@@ -66,18 +66,22 @@ class MultiGrid
   double Vparallel_lo;	// Parallel Low Voltage
   double Vparallel_hi;	// Parallel High Voltage
   double Vserial_lo;	// Serial Low Voltage
-  double Vaverage;       // Average volatge on bottom
+  double Vaverage;       // Average voltage on bottom
   double Vchannelstop;   //  Voltage of undepleted channel stop
   double Vscupper;       // Scupper voltage
 
-  int Channelkmin;              // Bottom of the silicon - first doped grid point
+  int Channelkmin;              // Bottom of channel region doping 
   int Channelkmax;              // Top of channel region doping 
+  int ChannelStopkmin;          // Bottom of channel stop region doping 
+  int ChannelStopkmax;          // Top of channel stop region doping 
   int ChannelProfile;           // 0 = Square well, 1 = Gaussian
   int ChannelStopProfile;       // 0 = Square well, 1 = Gaussian
   double BackgroundDoping; 	// Background doping
   double ChannelStopDoping;	// Channel Stop doping
   double ChannelStopDepth;     	// Channel stop depth in microns
   double ChannelStopWidth;     	// Channel stop width in microns
+  double ChannelStopCharge;
+  double CSChargeDepth;
   double ChannelDoping;		// Channel doping
   double ChannelDepth;		// Channel depth in microns
   double GateOxide;             // Gate oxide thickness in microns
@@ -149,11 +153,13 @@ class MultiGrid
   string outputfiledir; // Output filename directory
 
   int SaveData;
+  int SaveElec;  
   
   Array3D** phi;      // Phi arrays
   Array3D** rho;      // Rho arrays
   Array3D** E;
   Array3D** elec;      // Number of stored electrons
+  Array3D** hole;      // Number of mobile holes  
   
   MultiGrid() {};
   MultiGrid(string);
@@ -163,7 +169,9 @@ class MultiGrid
   void BuildArrays(Array3D**, Array3D**, Array3D**, Array3D**, Array2D**);
   void SetInitialVoltages(Array3D*, Array2D*);
   void SetFixedCharges(Array3D*, Array2D*);
-  void SetMobileCharges(Array3D*);  
+  void SetInitialElectrons(Array3D*, Array3D*);  
+  void SetInitialHoles(Array3D*, Array3D*);
+  void AdjustHoles(Array3D*, Array3D*, Array3D*);  
   void SOR(Array3D*, Array3D*, Array2D*, double);
   void SOR_N(Array3D*, Array3D*, Array2D*, double, int);  
   double Error(Array3D*, Array3D*);
@@ -172,15 +180,16 @@ class MultiGrid
   void VCycle(Array3D**, Array3D**, Array2D**, double, int, int);
   void WriteOutputFile(string, string, string, Array3D*);
   void Gradient(Array3D*, Array3D**);
-  void Trace(Array3D**, double*, ofstream&);
-  void TraceSpot(Array3D*, Array3D**, int);
-  void TraceGrid(Array3D**, int);  
-  void TraceRegion(Array3D**, int);
-  void FindEdge(Array3D**, double*, double, ofstream&);
-  void FindCorner(Array3D**, double*, double*, ofstream&);
-  void CalculatePixelAreas(Array3D**, int);
+  void Trace(double*, int, bool, double, ofstream&);
+  void TraceSpot(int);
+  void TraceMultipleSpots(int);  
+  void TraceGrid(int);  
+  void TraceRegion(int);
+  void FindEdge(double*, double, ofstream&);
+  void FindCorner(double*, double*, ofstream&);
+  void CalculatePixelAreas(int);
   void AddDipolePotentials(Array3D*);
   double mu_Si (double, double);
-  void FillRho(Array3D*, Array3D*);  
+  void FillRho(Array3D*, Array3D*, Array3D*);  
 };
 

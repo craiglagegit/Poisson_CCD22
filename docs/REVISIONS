@@ -1,0 +1,180 @@
+Craig Lage - 24-Nov-14
+This note documents the evolution of the evolution of the Poisson solver I am writing to simulate charge transfer in the LSST CCDs.  The solver uses the method of Successive OverRelaxation (SOR) coupled with the concept of V-Cycles of successively smaller grids, which dramatically speeds up the convergence.
+
+The outer grid cells (0 and N) hold the boundary conditions, so iteration only takes place from cells 1 -> N-2.  The size of the inner array must be a multiple of 2 for the V-Cycles to work properly, so the arrays are of size 2**n + 2 - i.e (6, 10, 18, 34, 66...)
+
+Poisson_py - This was a Python version to develop the algorithms, test out the concept, and gauge the speed. A 128^3 converged after about 5 V-Cycles, and took about 1600 seconds for 10 V-Cycles.  Assuming a 100X speed up in C/C++, this means a 256^3 should take only about 2 minutes, which should be adequate.
+
+Poisson_cpp - This was a conversion of the above code to C++, getting the algorithms working and verifying >100X speed-up.
+
+Poisson_cpy* - These are a series of codes using a Python wrapper calling a C++ .so library.
+
+Poisson_rho_cpy* - These added the charge density calculation.  Started to really work with Poisson_cpy5. Poisson_rho_cpy7 is pretty good.
+
+Poisson_pixels* - These added the CCD gate potentials, and started calcualting and plotting the E-Field. Poisson_pixels2 was good enough to make some plots to send to Tony for a grant proposal.
+
+Poisson_grid* - Starting to add the channel stop charge and beginning to calculate the electron path and develop grid maps.
+
+Poisson_grid1* - With channel stop charge.
+
+Poisson_grid2* - These have the array edge, with the serial grids and scupper voltages, and some attempts to calculate the electron path.  These still aren't working very well.
+
+Poisson_grid3* - This has a fairly major re-write.  I realized things weren't converging as well as I thought, since the BCs weren't being transferred to the coarser grids properly.  I re-wrote the Restriction and Prolongation routines so that the coarser arrays are centered on the same points as the finer arrays.  This allows the BCs to be transferred directly.  For this reason, I also went to 12 grid points per pixel, because then everything is divisible by 4 so things transfer down at least to 2 coarser grids without losing the pattern.  I also added while statements in the VCycle so that the iterations continue at each resolution until they have converged to some value.  This is also working OK now.  The electron path calculation is still not working, but that is for another day (26-Nov-14).
+
+Something is still not right.  Returning the Prolongated full array before doing any SOR on it shows that the data is somehow shifted.  This is why it is taking so many iterations.  I have to get to the bottom of this.
+
+Next step:  Modify grid3B to allow me to return the 64x64x64 array as well as the 128x128x128, and then plot them in Python.
+
+2-Dec-14: The above problems are all fixed now.  It isn't necessary to iterate at the finest scale until machine precision is reached.  A fixed number of iterations at each scale (say 100) is sufficient, because the solution from the coarser grid is almost correct.  I have also modified the BC so that they are fixed BC on the top and bottom, but free BC (first derivative of phi = 0) on the sides.  This is more realistic.  I have also added a small background charge (~ 1E12 cm-3) to the problem.  I've also sped up the inner loops significantly - it only takes 200 seconds for 256^3, and about 2400 seconds for 512^3 (why not 8X?). The latest revisions are in Poisson_grid2C and Poisson_grid3D.  The C++ code is identical in these two folders.  grid3D is a square cross section with pixels, and grid2C is a rectangular (256x128x128, say) region with the array edge.  I've also changed to basic setup to have 12 grid points per 10 micron pixel, so the thickness is 128 * (10/12) = 106.67 micron - close enough.
+
+
+9-Dec-14:
+
+Latest version is now Poisson_cpp4.  This has the following improvements:
+(1) Standalone C++ program driven from a config file that writes HDF5 output.  Separate Python plot program.
+(2) Took error calculation out of SOR to speed it up.  Now a separate routine run once.
+(3) Tried running Red/Black instead of SOR as per Numerical Recipes, but it is definitely faster with SOR.
+(4) Split up Rho and Phi to prepare for calculating E and doing electron path calculations.
+(5) Charges now validated and calculated from first principles.
+
+Things to do:
+
+(1) Think more about front side potentials.  Is there a significant voltage drop across the oxide?  What about when a charge is present?
+
+(2) Move more of the calculations to C++ - E-field calculations, electron path calculations.
+
+19-Jan-15
+
+E-Field, pixel boundaries, and electron paths now in C++ code. Have also made it flexible enough to accomodate edges and such in the .cfg file.  Current Status:
+
+(1) Poisson_cpp4 has the pixel boundaries as distorted by stored charge in the well. Both a uniform charge and a point charge are simulated.
+(2) Poisson_cpp5 has the ability to log and plot the electron paths, which look reasonable.
+(3) I'm adding the capability to add dipoles in Poisson_cpp6, so I can do comparisons.
+
+Python plotting summary:
+
+(1) Poisson.py - plots a summary of the simulation in cross-section, rho, E, ...
+(2) Pixels.py - plot the pixel boundaries
+(3) Pixels_Multiple.py - plots a comparison of pixel boundaries from different sims.
+(4) Pixel_Paths.py - plots the electron paths.
+
+18-Feb-15
+
+Latest version is now Poisson_cpp7.  I've created a file (Poisson) which has the latest version suitable for posting, including two example .cfg files, an INSTALL file, a README file, and a docs folder.
+
+Poisson_CCD is a clean version for posting on github.
+
+Python plotting summary:
+
+(1) Poisson_Plots.py - Now builds all of the plots and reads the .cfg file to get the necessary info.
+
+7-Sep-15
+
+Made quite a few improvements.  Here is a summary:
+
+Poisson_CCD4 - Poisson_CCD6: Are a variety of changes, tests, and improvements, culminating in Poisson_CCD7.  The changes include:
+
+(1) Added code to run Brighter-Fatter spots.  TraceGrid is the old code for tracing a grid of starting electrons.  TraceSpot traces a Gaussian spot with random electron starting locations.
+(2) Added code to include electron diffusion. This includes several options, one to add a multiplier, and one to take a larger step to make it run faster.
+(3) Added an option for periodic boundary conditions on the sides.
+(4) Moved the vertical location of the CollectedCharge from being at one grid point above the top of the channel charge to being in the center of the channel charge.  This reduced the slope of the B-F curves from ~ 2% to ~ 1%, in better agreement with the measurements.  See Poisson_CCD7/run1 and run1A and Poisson_CCD7_BF and Poisson_CCD7A_BF.
+(5) Sped things up by iterating much more for small values of z than large values of z.  Base code now does the following:
+     (A) Iterates every cycle for z < zmax/8
+     (B) Iterates every 4th cycle for z < zmax/4
+     (C) Iterates every 16th cycle for z < zmax/2
+     (D) Iterates every 64th cycle and at the end for all z's.
+
+     Resulting speedup ~ 64T vs 64(T/8) + 16(T/4) + 4(T/2) + 2T ~ 4X
+
+17-Sep-15
+
+Poisson_CCD8 is a clean version of Poisson_CCD7 for posting on github.
+
+Found the source of the "warping" in the edge plots.  There was a one grid cell error in the periodic boundary conditions.
+
+Poisson_CCD9 - Verification of periodic BC fix.  Lateral E-Field at z=75 < 1.0E-8 now.  Fix has been propagated back into CCD7 and CCD8.  CCD7 with fix has been run with 256 spots on NERSC Edison, and strange behavior with Sigma-X > Sigma-Y at low intesities is gone, even without the Zmax hack.
+
+Poisson_CCD10 - This is an attempt to re-write things with an even number of grid cells, which might run better in the long run.  Not working yet.  May have uncovered a problem with the charge normalization that needs to be looked into. No, this is OK.
+
+Poisson_CCD11 - This is an improvement on CCD10.  It is working now, but shows no improvement over CCD7/8, and I'm not sure why.  Need to come back to this.
+
+Poisson_CCD12, 12A, 13 - This is the latest clean code - it eliminates the Trace vs TracePaths, so I can keep these in sync. Poisson_CCD12A adds a variable Gate Oxide thickness, and Poisson_CCD13 does the most correct electron tracking, with mu being calculated at every point, and the electron iterating for 1000 steps after it reaches the bottom, in order to achieve some level of equilibrium.
+
+Poisson_CCD14 - This is in preparation for keeping the full location information of the electron as it reaches a well.  Run1 places 10,000 electrons, and run2 50,000 electrons.  They are concentrated at the pixel center.
+
+Poisson_CCD15 - This does the full loop, keeping the electron location information and re-calculating the field every NumElec electrons.
+
+Poisson_CCD15_Spot - Same as Poisson_CCD15, but replaces rejection sampling of the initial photon locations with the Box-Muller algorithm, which is faster because no random numbers are discarded.
+
+Poisson_CCD16 - Clean version of Poisson_CCD15 for posting on github.
+
+Poisson_CCD17 - Implementation of electron loss at interface.
+
+Poisson_CCD18 - CCD17 + several changes:
+	      	(1) Added code to calculate pixel areas as a polygon with 256 vertices. Slow, but accurate.
+		(2) Made 'PixelAreas' and 'SaveData' integer inputs to allow you to do these calculations of save the data every N steps.
+
+Poisson_CCD18A - Mod of CCD18 to force electrons into central spot.  Not important
+
+Poisson_CCD18B - Clone of CCD18 to better calculate pixel areas and vertices.  I've realized that this is key to implementing in PhoSim, so warrants more attention.  New algorithm to find the corners, and then will add code with N points along the edges.
+
+Poisson_CCD19 - 18Dec15 - Better Pixel Areas - Binary search to find corners, and then NumVertices vertices per edge.
+
+Poisson_CCD20 - 2Feb16 - Added Gaussian profiles for Channel and ChannelStop.  Added random grid of electrons for characterizing diffusion near pixel edges
+	      - 10Feb16 - Tests with CCD20 show areas different from CCD18 and/or CCD19.  What has caused the change?  Need to back-track and make sure the area/vertex algorithm is correct.
+	      - 12Feb16 - Problem was that I specified ElectronZ0 = 10.0 in order to keep all electrons in the central pixel when doing the area plots.  This same value was used in the
+	                  vertex finding, which screwed up the area calculation.  I split the ElectronZ0 into ElectronZ0Area and ElectronZ0Fill to allow these to be different. Fixed and re-running.
+29-Feb-16
+
+Poisson_CCD22 - Clean version of Poisson_CCD20 for posting on github.  Six example files have been created and tested.
+
+1-Mar-16
+
+Poisson_CCD23 - CCD22 + modification to allow adjustment of depth of channel implant
+	        Also split up SaveData and SaveElec
+
+Poisson_CCD24 - CCD23 + forces z-location of collected electrons to Channelkmin
+
+Poisson_CCD25 - Playing with non-linear z-axis (zeta = sqrt(z)).
+
+29-Apr-16
+
+Poisson_CCD_Stretch - Workhorse with non-linear z-axis working.  Used for many runs.
+
+Poisson_CCD_Stretch_Test - Tried using TraceRegion instead of small TraceSpot to fill one pixel.  Didn't really work.
+
+Poisson_CCD_Stretch_Test2 - Added an electron redistribution step.  Didn't really work.
+
+Poisson_CCD_Stretch_Test3 - Added bottomsteps as a parameter to Trace.  Good idea, but dropped to pursue Test4.
+
+Poisson_CCD_Stretch_Test4 - Workhorse.  Instead of putting each e- in the average location of 1000 diffusion steps, placed 0.001 e- in each location.  I think this is physically much more reasonable.
+
+Poisson_CCD_Stretch_Test5 - Experiment to shift Channel Stop deeper into silicon,  adding a shift between Channelkmin and ChannelStopkmin.  No real impact.
+
+Poisson_CCD_Stretch_Test6 - Going to work harder to get redistribution step working so I can put electrons in many pixels, then move them to equilibrium positions.  After several trials, still not working. Giving up on this approach
+
+Poisson_CCD_Stretch_Test7 - Added a TraceMultipleSpots to add charge to many spots and simulate a flat.  Reworked the Trace routines so a single Trace serves them all.  To fill all of the spots, I changes the extent from (5,5)-(115,115) to (10,10)-(110,110).  The even number of spots means one less level of grid reduction, so I reduced this parameter by 1 in the code.  This means the number of grid cells only needs to be divisible by 16, not 32. This seems to have virtually no impact on speed or accuracy.  In the final analysis, this made very little difference.
+
+Poisson_CCD_Stretch_Test8 - Preliminary version of adding free holes to the mobile charges.
+
+Poisson_CCD_Stretch_Test9 - First workhorse version of adding free holes to the mobile charges.  This appears to be the key to getting everything to match.  More work needed to find a faster and more physicaly accurate way of adding the free holes. Poisson_CCD_Stretch_BS10 gave reasonably good results.
+
+Ran a number of tests aimed at adding free holes to the simulation:
+
+Poisson_CCD_Stretch_Test11 - Test run to verify that I am correctly calculating the surface charge to bring phi(ChannelStopkmin) = Vchannelstop.  Looks good - incorporated into Hole2.
+
+Poisson_CCD_Hole1 - Basically a version similar to Test9, but adding a separate hole array instead of putting the holes in the elec array.
+
+Poisson_CCD_Hole2 - Same as Hole1, but added a thicker FieldOxide.  This didn't work out very well.  Not currently pursuing it.
+
+Poisson_CCD_Hole3 - Added a boolean hole_clamp array to allow me to clamp the potential to <= Vchannelstop wherever hole_clamp = true.  Poisson_CCD_Hole3_BF1 gave good correlation results.
+
+Poisson_CCD_Hole4 - Same as Hole3, but added an AdjustHoleClamp routine that tries to fix the discontinuities in the E-Field at the boundary of the hole_clamp region. 
+
+Poisson_CCD_Hole5 - Extension of Hole1/2, eliminating the thicker field oxide, and using the insights in how to set the initial hole concentrations and adjust only the edges.
+
+Poisson_CCD_Hole6 - Extension of Hole5, with a better method of identifying the edges.  This worked, and gave results very similar to Hole1/2, but was rapidly growing in complexity, so I am going back to the Hole1/2 scheme of adjusting the hole desnity everywhere in the CS region.
+
+Poisson_CCD_Hole7 - Back to the scheme of Hole 1/2, with some of the enhancements from Hole6. With 20 iterations before starting, this seems to work reasonably well. Launched Poisson_CCD_Hole7_BF1 (0.09 um GOX) and Poisson_CCD_Hole7_BF2 (0.14 um Gox).  This code is now giving the best fits yet in terms of simultaneously fitting the spot size slopes (with two different values of VBB) and the correlation measurements. 
+
+Poisson_CCD_Hole8 - Attempting to put the AdjustHoles routine deeper into the multi-grid flow, so it can be done at lower resolutions and propagated up.

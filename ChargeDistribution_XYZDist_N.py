@@ -14,6 +14,8 @@ class Array3dHDF5Elec(object):
     def __init__(self, dir, filebase, n):
         elecfile = dir+'/'+filebase+'_'+str(n)+'_Elec'
         hdfelec = h5py.File(elecfile,'r')
+        holefile = dir+'/'+filebase+'_'+str(n)+'_Hole'
+        hdfhole = h5py.File(holefile,'r')
         Dimension = hdfelec[hdfelec.items()[0][0]].attrs[u'Dimension']
         self.nx=Dimension[0]
         self.ny=Dimension[1]
@@ -35,8 +37,8 @@ class Array3dHDF5Elec(object):
         
         self.x=linspace(self.xmin+self.dx/2,self.xmax-self.dx/2,self.nx)
         self.y=linspace(self.ymin+self.dy/2,self.ymax-self.dy/2,self.ny)
-        self.zp=linspace(self.zmin+self.dzp/2,self.zmax-self.dzp/2,(ConfigData["Nx"] * ConfigData["ScaleFactor"] + 1))[0:16*ConfigData["ScaleFactor"]]
-        self.z=linspace(self.zmin+self.dzp/2,self.zmax-self.dzp/2,(ConfigData["Nx"] * ConfigData["ScaleFactor"] + 1))[0:16*ConfigData["ScaleFactor"]]
+        self.zp=linspace(self.zmin+self.dzp/2,self.zmax-self.dzp/2,(ConfigData["Nx"] * ConfigData["ScaleFactor"] + 1))[0:32*ConfigData["ScaleFactor"]]
+        self.z=linspace(self.zmin+self.dzp/2,self.zmax-self.dzp/2,(ConfigData["Nx"] * ConfigData["ScaleFactor"] + 1))[0:32*ConfigData["ScaleFactor"]]
 
         def ZP(z):
             n = 10.0
@@ -72,6 +74,7 @@ class Array3dHDF5Elec(object):
         self.Channelkmin = ZIndex(ConfigData["GateOxide"] * EPSILON_SI / EPSILON_OX)
 
         self.elec=array(hdfelec[hdfelec.items()[0][0]])
+        self.hole=array(hdfhole[hdfhole.items()[0][0]])        
 
 def ReadConfigFile(filename):
     # This reads the config file for the necessary settings
@@ -145,7 +148,7 @@ dat = Array3dHDF5Elec(outputfiledir, outputfilebase, run)
 nxx = dat.nx - 1
 nyy = dat.ny - 1
 nzz = dat.nz - 1
-NumPixelsPlotted = 3
+NumPixelsPlotted = int(sys.argv[3])
 nxcenter = nxx/2
 nycenter = nyy/2
 nxmin = nxcenter - (NumPixelsPlotted * ScaleFactor * GridsPerPixel)/2
@@ -155,15 +158,6 @@ nymax = nymin + (NumPixelsPlotted * ScaleFactor * GridsPerPixel)
 levels = linspace(-3.0, 7.0, 101)
 file = open(outputfiledir+"/charge.txt","w")
 
-
-Total_elec = dat.elec.sum()
-
-file.write("Total Electrons = %.1f\n"%Total_elec)
-
-Below_kmin = dat.elec[:,:,0:dat.Channelkmin].sum()
-
-print "Total electrons = %d, Below kmin = %d"%(Total_elec, Below_kmin)
-
 nzxmin = nxcenter - (ScaleFactor * GridsPerPixel)/2
 nzxmax = nzxmin + (ScaleFactor * GridsPerPixel)
 nzymin = nycenter - (ScaleFactor * GridsPerPixel)/2
@@ -171,63 +165,117 @@ nzymax = nzymin + (ScaleFactor * GridsPerPixel)
 ncenter = 0.0
 nzcenter = 0.0
 
+Total_elec = 0.0
+Below_kmin = 0.0
 for nx in range(nzxmin, nzxmax):
     for ny in range(nzymin, nzymax):
         for nz in range(nzz):
-            ncenter += dat.elec[nx,ny,nz]
-            nzcenter += dat.z[nz] * dat.elec[nx,ny,nz]
-
+            if dat.elec[nx,ny,nz] > 0.0:
+                ncenter += dat.elec[nx,ny,nz]
+                nzcenter += dat.z[nz] * dat.elec[nx,ny,nz]
 meanz = nzcenter / ncenter
+print "Electrons in center Pixel = %.1f, Mean z = %.3f microns\n"%(ncenter, meanz)
+
 file.write("Electrons in center Pixel = %.1f, Mean z = %.3f microns\n"%(ncenter, meanz))
 file.close()
-fig = figure(figsize = (12,12))
-suptitle("Well Filling with Two Collecting Phases", fontsize = 36)
 
-ax1=axes([0.10,0.40,0.50,0.50],aspect=1)
-ax1.set_title("X-Y Slice")
-ax1.set_xticks([])
-ax1.set_yticks([])
-plotarray = sum(dat.elec[nxmin:nxmax,nymin:nymax,:],axis = 2)+0.1
-for nx in range(ScaleFactor*GridsPerPixel,nxmax-nxmin,ScaleFactor*GridsPerPixel):
-    for ny in range(0,nymax-nymin):
-        plotarray[nx,ny] = 0.001
-for ny in range(ScaleFactor*GridsPerPixel,nymax-nymin,ScaleFactor*GridsPerPixel):
-    for nx in range(0,nxmax-nxmin):
-        plotarray[nx,ny] = 0.001
-for nx in range(ScaleFactor*GridsPerPixel-1,nxmax-nxmin,ScaleFactor*GridsPerPixel):
-    for ny in range(0,nymax-nymin):
-        plotarray[nx,ny] = 0.001
-for ny in range(ScaleFactor*GridsPerPixel-1,nymax-nymin,ScaleFactor*GridsPerPixel):
-    for nx in range(0,nxmax-nxmin):
-        plotarray[nx,ny] = 0.001
+carriers = ['Electron', 'Hole']
+plotdatas = [dat.elec, dat.hole]
 
-ax1.imshow(log10(transpose(plotarray)), interpolation = 'nearest')
+for i, plotdata in enumerate(plotdatas):
 
-ax2=axes([0.10,0.10,0.50,0.20])
-ax2.set_title("X-Z Slice")
-ax2.set_xticks([])
-ax2.set_yticks([])
-plotarray = sum(dat.elec[nxmin:nxmax,:,0:20],axis = 1)+0.1
-for nx in [0, 1, 2, nxmax-nxmin-3, nxmax-nxmin-2, nxmax-nxmin-1]:
-    #for nz in range(0,dat.Channelkmin):
-    plotarray[nx,dat.Channelkmin] = 0.001
+    if i == 1:
+        nxcenter += ScaleFactor * GridsPerPixel / 2
+        nycenter += ScaleFactor * GridsPerPixel / 2        
 
-ax2.imshow(log10(transpose(fliplr(plotarray))), interpolation = 'nearest')
+    fig = figure(figsize = (12,12))
+    suptitle("%s Charge Distribution"%carriers[i], fontsize = 36)
 
-ax3=axes([0.70,0.40,0.20,0.50])
-ax3.set_title("Y-Z Slice")
-ax3.set_xticks([])
-ax3.set_yticks([])
-plotarray = sum(dat.elec[:,nymin:nymax,0:20],axis = 0)+0.1
-for ny in [0, 1, 2, nymax-nymin-3, nymax-nymin-2, nymax-nymin-1]:
-    #for nz in range(0,dat.Channelkmin):
-    plotarray[ny,dat.Channelkmin] = 0.001
-    #for nz in range(0,dat.Channelkmin):
-    #    plotarray[ny,nz] += 0.001
+    ax1=axes([0.10,0.40,0.50,0.50],aspect=1)
+    ax1.set_title("X-Y Slice")
+    ax1.set_xticks([])
+    ax1.set_yticks([])
+    plotarray = sum(plotdata[nxmin:nxmax,nymin:nymax,:],axis = 2)+0.1
+    if i == 0:
+        for nx in range(ScaleFactor*GridsPerPixel,nxmax-nxmin,ScaleFactor*GridsPerPixel):
+            for ny in range(0,nymax-nymin):
+                plotarray[nx,ny] = 0.001
+        for ny in range(ScaleFactor*GridsPerPixel,nymax-nymin,ScaleFactor*GridsPerPixel):
+            for nx in range(0,nxmax-nxmin):
+                plotarray[nx,ny] = 0.001
+        for nx in range(ScaleFactor*GridsPerPixel-1,nxmax-nxmin,ScaleFactor*GridsPerPixel):
+            for ny in range(0,nymax-nymin):
+                plotarray[nx,ny] = 0.001
+        for ny in range(ScaleFactor*GridsPerPixel-1,nymax-nymin,ScaleFactor*GridsPerPixel):
+            for nx in range(0,nxmax-nxmin):
+                plotarray[nx,ny] = 0.001
 
-ax3.imshow(log10(fliplr(plotarray)), interpolation = 'nearest')
-savefig(outputfiledir+"/plots/ChargeDistribution_%d.pdf"%run)
-close(fig)
+    ax1.imshow(log10(transpose(plotarray)), interpolation = 'nearest')
+
+    ax2=axes([0.10,0.20,0.50,0.20])
+    ax2.set_title("X-Z Slice")
+    ax2.set_xticks([])
+    ax2.set_yticks([])
+    plotarray = sum(plotdata[nxmin:nxmax,:,:],axis = 1)+0.1
+
+    for nx in [0, 1, 2, nxmax-nxmin-3, nxmax-nxmin-2, nxmax-nxmin-1]:
+        #for nz in range(0,dat.Channelkmin):
+        plotarray[nx,dat.Channelkmin] = 0.001
+
+    ax2.imshow(log10(transpose(fliplr(plotarray))), interpolation = 'nearest')
+
+    ax3=axes([0.10,0.10,0.50,0.10])
+    ax3.set_title("X-Cut, Y = %.2f"%dat.y[nycenter])
+    plotarray = sum(plotdata[nxmin:nxmax,nycenter,:],axis = 1)
+    ax3.plot(dat.x[nxmin:nxmax],plotarray)
+    ax3.set_xlabel("X ( Microns)")
+    ax3.set_ylabel("Charge Density")
+
+
+    ax4=axes([0.60,0.40,0.20,0.50])
+    ax4.set_title("Y-Z Slice")
+    ax4.set_xticks([])
+    ax4.set_yticks([])
+    plotarray = sum(plotdata[:,nymin:nymax,:],axis = 0)+0.1
+
+    for ny in [0, 1, 2, nymax-nymin-3, nymax-nymin-2, nymax-nymin-1]:
+        #for nz in range(0,dat.Channelkmin):
+        plotarray[ny,dat.Channelkmin] = 0.001
+        #for nz in range(0,dat.Channelkmin):
+        #    plotarray[ny,nz] += 0.001
+
+    ax4.imshow(log10(fliplr(plotarray)), interpolation = 'nearest')
+
+    ax5=axes([0.80,0.40,0.10,0.50])
+    ax5.set_title("Y-Cut, X = %.2f"%dat.x[nxcenter])
+    plotarray = sum(plotdata[nxcenter,nymin:nymax,0:20],axis = 1)
+    ax5.plot(plotarray,dat.y[nymin:nymax])
+    ax5.set_xlim(ax5.get_xlim()[::-1])
+    ax5.yaxis.tick_right()
+    ax5.yaxis.set_label_position("right")
+    for tick in ax5.get_xticklabels():
+        tick.set_rotation(90)
+    ax5.set_ylabel("Y ( Microns)")
+    ax5.set_xlabel("Charge Density")
+
+    ax6=axes([0.65,0.25,0.10,0.10])
+    ax6.set_title("Z-Cut")
+    if i == 0:
+        plotarray = log10(plotdata[nxcenter,nycenter,:]+0.01)
+        ax6.plot(dat.z[:],plotarray, label = '(X,Y) = (%.2f,%.2f)'%(dat.x[nxcenter],dat.y[nycenter]))
+    if i == 1:
+        plotarray = log10(plotdata[nxcenter,nycenter,:]+0.01)
+        ax6.plot(dat.z[:],plotarray, label = '(X,Y) = (%.2f,%.2f)'%(dat.x[nxcenter],dat.y[nycenter]))        
+        nycenter -= ScaleFactor * GridsPerPixel / 2        
+        plotarray = log10(plotdata[nxcenter,nycenter,:]+0.01)
+        ax6.plot(dat.z[:],plotarray, label = '(X,Y) = (%.2f,%.2f)'%(dat.x[nxcenter],dat.y[nycenter]))        
+        legend(bbox_to_anchor=(1.05, 0.5), loc=2, fontsize = 9)
+    ax6.set_ylabel("Log Charge Density")
+    ax6.set_xlim(ax6.get_xlim()[::-1])
+    ax6.set_xticks([0.0,1.0,2.0])
+    ax6.set_xlabel("Z ( Microns)")
+    savefig(outputfiledir+"/plots/%sDistribution_XYZ_%d.pdf"%(carriers[i],run))
+    close(fig)
 
 
 

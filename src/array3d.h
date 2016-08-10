@@ -19,8 +19,8 @@
 class Array3D //This packages the 3D data sets
 {
  public:
-  int nx, ny, nz;
-  double xmin, xmax, ymin, ymax, zmin, zmax, dx, dy, dz, volume, *x, *y, *z, *data;
+  int nx, ny, nz, nkz, *kz;
+  double xmin, xmax, ymin, ymax, zmin, zmax, dx, dy, dzp, volume, *x, *y, *z, *zp, *zplus, *zminus, *dzpdz, *zpint, *data;
   Array3D() {};
   Array3D(double, double, int, double, double, int, double, double, int);
   ~Array3D();
@@ -29,5 +29,11 @@ class Array3D //This packages the 3D data sets
   int XIndex(double);
   int YIndex(double);
   int ZIndex(double);  
-
+  double ZP(double);
+  double ZPInt(double);
+  double DZPDz(double);
+  double D2ZPDz2(double);
+  double Z(double);
+  double ZPlus(double);
+  double ZMinus(double);
 };

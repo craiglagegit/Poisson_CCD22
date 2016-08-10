@@ -81,7 +81,7 @@ def ReadAreaFile(filename, nx, ny):
 
 #****************MAIN PROGRAM*****************
 
-data = [0.77, 0.91, 0.005451, 0.01382, -1.284, [0.001796, 0.003346, 0.001127, 0.001273, 0.000985, 0.000571]]
+data = [0.77, 0.91, 0.005943, 0.01227, -1.275, [0.001591, 0.002966, 0.000994, 0.000882, 0.000862, 0.000501]]
 dataij = [0, 0, 1, 1, 0, [4,2,5,4,5,8]]
 
 # First, read the .cfg file
@@ -165,7 +165,7 @@ xlabel("$i^2 + j^2$")
 ylabel("$\delta$ Area / Area")
 xlim(0.8,100)
 legend()
-savefig(outputfiledir+"/plots/Area_UnBiased_%d_%d.pdf"%(run, step))
+savefig(outputfiledir+"/plots/Area_UnBiased_Corr_%d_%d.pdf"%(run, step))
 #savefig("Area_%d_%d.pdf"%(run, step))
 
 file = open(outputfiledir+"/corr.txt","w")
@@ -195,5 +195,5 @@ xlim(10.0, 100.0)
 ylim(10.0, 100.0)
 xlabel("X(microns)")
 ylabel("Y(microns)")
-savefig(outputfiledir+"/plots/PixelAreas_UnBiased_%d_%d.pdf"%(run, step))
+savefig(outputfiledir+"/plots/PixelAreas_UnBiased_Corr_%d_%d.pdf"%(run, step))
 #savefig("PixelAreas_%d_%d.pdf"%(run, step))

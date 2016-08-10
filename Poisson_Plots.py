@@ -37,7 +37,35 @@ class Array3dHDF5(object):
         
         self.x=linspace(self.xmin+self.dx/2,self.xmax-self.dx/2,self.nx)
         self.y=linspace(self.ymin+self.dy/2,self.ymax-self.dy/2,self.ny)
-        self.z=linspace(self.zmin+self.dz/2,self.zmax-self.dz/2,self.nz)
+        self.zp=linspace(self.zmin+self.dz/2,self.zmax-self.dz/2,self.nz)
+        self.z=linspace(self.zmin+self.dz/2,self.zmax-self.dz/2,self.nz)        
+
+
+        def ZP(z):
+            n = 10.0
+            return - 100.0 * (n - 1.0) * pow(z / 100.0, (n + 1.0)/n) + n * z
+
+        def DZPDz(z):
+            n = 10.0
+            return - (n - 1.0) * (n + 1.0) / n * pow(z / 100.0, 1.0 / n) + n
+
+        def Z(zp):
+            # Inverts ZP(z) using Newton's method
+            i = 0
+            error = 1.0
+            lastroot = zp
+            while (error>1e-12):
+                newroot = lastroot - (ZP(lastroot) - zp) / DZPDz(lastroot)
+                error = fabs((newroot - lastroot) / lastroot)
+                lastroot=newroot
+                i=i+1
+                if (i > 100):
+                    print "Iterations exceeded in Z(zprime). Quitting."
+                    return newroot
+            return newroot
+
+        for k in range(self.nz):
+            self.z[k] = Z(self.zp[k])
 
         self.phi=array(hdfphi[hdfphi.items()[0][0]])
         hdfrho = h5py.File(rhofile,'r')
@@ -149,7 +177,7 @@ nxmin = nxcenter - (NumPixelsPlotted * ScaleFactor * GridsPerPixel)/2
 nxmax = nxcenter + (NumPixelsPlotted * ScaleFactor * GridsPerPixel)/2
 
 nzmin = 0
-nzmax = 8 * ScaleFactor
+nzmax = 16 * ScaleFactor
 
 rcParams['contour.negative_linestyle'] = 'solid'
 rcParams.update({'font.size': 6})
@@ -199,16 +227,17 @@ figure()
 suptitle("1D Potential and Charge Density Slices. Grid = %d*%d*%d."%(nxx,nyy,nzz),fontsize = 18)
 plotcounter = 1
 subplots_adjust(hspace=0.3, wspace=0.3)
-numzs = 20
-deltaz = dat.dz / 2.0 - 0.01
+phinumzs = 100
+numzs = 100
+
 
 subplot(2,3,1)
 title("Phi-Collect Gate")
-plot(dat.z[0:20],(dat.phi[nxcenter2,nycenter2,0:20]+dat.phi[nxcenter2-1,nycenter2,0:20]+dat.phi[nxcenter2,nycenter2-1,0:20]+dat.phi[nxcenter2-1,nycenter2-1,0:20])/4.0, label = "x = %.2f, y = %.2f"%((dat.x[nxcenter2]+dat.x[nxcenter2-1])/2.0,(dat.y[nycenter2]+dat.y[nycenter2-1])/2.0))
+plot(dat.z[0:phinumzs],(dat.phi[nxcenter2,nycenter2,0:phinumzs]+dat.phi[nxcenter2-1,nycenter2,0:phinumzs]+dat.phi[nxcenter2,nycenter2-1,0:phinumzs]+dat.phi[nxcenter2-1,nycenter2-1,0:phinumzs])/4.0, label = "x = %.2f, y = %.2f"%((dat.x[nxcenter2]+dat.x[nxcenter2-1])/2.0,(dat.y[nycenter2]+dat.y[nycenter2-1])/2.0))
 
 nxcenter3 = nxcenter2 + 4 * GridsPerPixel*ScaleFactor
 
-plot(dat.z[0:20],(dat.phi[nxcenter3,nycenter2,0:20]+dat.phi[nxcenter3-1,nycenter2,0:20]+dat.phi[nxcenter3,nycenter2-1,0:20]+dat.phi[nxcenter3-1,nycenter2-1,0:20])/4.0, label = "x = %.2f, y = %.2f"%((dat.x[nxcenter3]+dat.x[nxcenter3-1])/2.0,(dat.y[nycenter2]+dat.y[nycenter2-1])/2.0))
+plot(dat.z[0:phinumzs],(dat.phi[nxcenter3,nycenter2,0:phinumzs]+dat.phi[nxcenter3-1,nycenter2,0:phinumzs]+dat.phi[nxcenter3,nycenter2-1,0:phinumzs]+dat.phi[nxcenter3-1,nycenter2-1,0:phinumzs])/4.0, label = "x = %.2f, y = %.2f"%((dat.x[nxcenter3]+dat.x[nxcenter3-1])/2.0,(dat.y[nycenter2]+dat.y[nycenter2-1])/2.0))
 legend(loc = "lower left")
 xlabel("Z-Dimension (microns)")
 ylim(-10.0, 15.0)
@@ -218,18 +247,18 @@ subplot(2,3,4)
 title("Rho-Collect Gate")
 zs = []
 rhos = []
-for i in range(numzs):
+for i in range(1,numzs):
     for m in [-1,0,1]:
-        zs.append(dat.z[i] + m * deltaz)
+        zs.append(dat.z[i] - 0.4 * (dat.z[i] - dat.z[i+m]))
         rhos.append((dat.rho[nxcenter2,nycenter2,i]+dat.rho[nxcenter2-1,nycenter2,i]+dat.rho[nxcenter2,nycenter2-1,i]+dat.rho[nxcenter2-1,nycenter2-1,i])/4.0)
 
 plot(zs, rhos, label = "x = %.2f, y = %.2f"%((dat.x[nxcenter2]+dat.x[nxcenter2-1])/2.0,(dat.y[nycenter2]+dat.y[nycenter2-1])/2.0))
 
 zs = []
 rhos = []
-for i in range(numzs):
+for i in range(1,numzs):
     for m in [-1,0,1]:
-        zs.append(dat.z[i] + m * deltaz)
+        zs.append(dat.z[i] - 0.4 * (dat.z[i] - dat.z[i+m]))
         rhos.append((dat.rho[nxcenter3,nycenter2,i]+dat.rho[nxcenter3-1,nycenter2,i]+dat.rho[nxcenter3,nycenter2-1,i]+dat.rho[nxcenter3-1,nycenter2-1,i])/4.0)
 
 plot(zs, rhos, label = "x = %.2f, y = %.2f"%((dat.x[nxcenter3]+dat.x[nxcenter3-1])/2.0,(dat.y[nycenter2]+dat.y[nycenter2-1])/2.0))
@@ -239,30 +268,56 @@ ylim(-60.0, 40.0)
 xlim(0.0,4.0)
 nxcenter3 = nxcenter2 + 3 * GridsPerPixel * ScaleFactor / 2
 nycenter3 = nycenter2
+nycenter4 = nycenter2 + GridsPerPixel * ScaleFactor / 2
 subplot(2,3,2)
-title("Phi-ChanStop, x = %.2f, y = %.2f"%(((dat.x[nxcenter3]+dat.x[nxcenter3-1])/2.0),((dat.y[nycenter3]+dat.y[nycenter3-1])/2.0)))
-plot(dat.z[0:20],(dat.phi[nxcenter3,nycenter3,0:20]+dat.phi[nxcenter3-1,nycenter3,0:20]+dat.phi[nxcenter3,nycenter3-1,0:20]+dat.phi[nxcenter3-1,nycenter3-1,0:20])/4.0)
+title("Phi-ChanStop")
+plot(dat.z[0:phinumzs],(dat.phi[nxcenter3,nycenter3,0:phinumzs]+dat.phi[nxcenter3-1,nycenter3,0:phinumzs]+dat.phi[nxcenter3,nycenter3-1,0:phinumzs]+dat.phi[nxcenter3-1,nycenter3-1,0:phinumzs])/4.0, label = "x = %.2f, y = %.2f"%((dat.x[nxcenter3]+dat.x[nxcenter3-1])/2.0,(dat.y[nycenter3]+dat.y[nycenter3-1])/2.0))
+plot(dat.z[0:phinumzs],(dat.phi[nxcenter3,nycenter4,0:phinumzs]+dat.phi[nxcenter3-1,nycenter4,0:phinumzs]+dat.phi[nxcenter3,nycenter4-1,0:phinumzs]+dat.phi[nxcenter3-1,nycenter4-1,0:phinumzs])/4.0, label = "x = %.2f, y = %.2f"%((dat.x[nxcenter3]+dat.x[nxcenter3-1])/2.0,(dat.y[nycenter4]+dat.y[nycenter4-1])/2.0))
+legend(loc = "lower left")
 xlabel("Z-Dimension (microns)")
 ylim(-20.0, 15.0)
-xlim(0.0,4.0)
+xlim(0.0,10.0)
 subplot(2,3,5)
-title("Rho-ChanStop, x = %.2f, y = %.2f"%(((dat.x[nxcenter3]+dat.x[nxcenter3-1])/2.0),((dat.y[nycenter3]+dat.y[nycenter3-1])/2.0)))
+title("Rho-ChanStop")
 zs = []
 rhos = []
-for i in range(numzs):
+for i in range(1,numzs):
     for m in [-1,0,1]:
-        zs.append(dat.z[i] + m * deltaz)
+        zs.append(dat.z[i] - 0.4 * (dat.z[i] - dat.z[i+m]))
         rhos.append((dat.rho[nxcenter3,nycenter3,i]+dat.rho[nxcenter3-1,nycenter3,i]+dat.rho[nxcenter3,nycenter3-1,i]+dat.rho[nxcenter3-1,nycenter3-1,i])/4.0)
+plot(zs, rhos, label = "x = %.2f, y = %.2f"%((dat.x[nxcenter3]+dat.x[nxcenter3-1])/2.0,(dat.y[nycenter3]+dat.y[nycenter3-1])/2.0))
 
-plot(zs, rhos)
+#print "1"
+#print dat.rho[nxcenter3, nycenter3,0:phinumzs]
+#print dat.phi[nxcenter3, nycenter3,0:phinumzs]
+#print dat.rho[nxcenter3-GridsPerPixel:nxcenter3+GridsPerPixel,nycenter3,5]
+#print dat.rho[nxcenter3-GridsPerPixel:nxcenter3+GridsPerPixel,nycenter3,2]
+#print dat.phi[nxcenter3-GridsPerPixel:nxcenter3+GridsPerPixel,nycenter3,5]
+
+zs = []
+rhos = []
+for i in range(1,numzs):
+    for m in [-1,0,1]:
+        zs.append(dat.z[i] - 0.4 * (dat.z[i] - dat.z[i+m]))
+        rhos.append((dat.rho[nxcenter3,nycenter4,i]+dat.rho[nxcenter3-1,nycenter4,i]+dat.rho[nxcenter3,nycenter4-1,i]+dat.rho[nxcenter3-1,nycenter4-1,i])/4.0)
+
+plot(zs, rhos, label = "x = %.2f, y = %.2f"%((dat.x[nxcenter3]+dat.x[nxcenter3-1])/2.0,(dat.y[nycenter4]+dat.y[nycenter4-1])/2.0))
+
+#print "2"
+#print dat.rho[nxcenter3, nycenter4,0:phinumzs]
+#print dat.phi[nxcenter3, nycenter3,0:phinumzs]
+
+
+legend(loc = "lower left")
 xlabel("Z-Dimension (microns)")
-ylim(-40.0, 40.0)
-xlim(0.0,4.0)
+ylim(-200.0, 200.0)
+xlim(0.0,10.0)
+
 nxcenter3 = nxcenter2
 nycenter3 = nycenter2 + GridsPerPixel * ScaleFactor / 2
 subplot(2,3,3)
 title("Phi-Barrier Gate, x = %.2f, y = %.2f"%(((dat.x[nxcenter3]+dat.x[nxcenter3-1])/2.0),((dat.y[nycenter3]+dat.y[nycenter3-1])/2.0)))
-plot(dat.z[0:20],(dat.phi[nxcenter3,nycenter3,0:20]+dat.phi[nxcenter3-1,nycenter3,0:20]+dat.phi[nxcenter3,nycenter3-1,0:20]+dat.phi[nxcenter3-1,nycenter3-1,0:20])/4.0)
+plot(dat.z[0:phinumzs],(dat.phi[nxcenter3,nycenter3,0:phinumzs]+dat.phi[nxcenter3-1,nycenter3,0:phinumzs]+dat.phi[nxcenter3,nycenter3-1,0:phinumzs]+dat.phi[nxcenter3-1,nycenter3-1,0:phinumzs])/4.0)
 xlabel("Z-Dimension (microns)")
 ylim(-20.0, 15.0)
 xlim(0.0,4.0)
@@ -270,9 +325,9 @@ subplot(2,3,6)
 title("Rho-Barrier Gate, x = %.2f, y = %.2f"%(((dat.x[nxcenter3]+dat.x[nxcenter3-1])/2.0),((dat.y[nycenter3]+dat.y[nycenter3-1])/2.0)))
 zs = []
 rhos = []
-for i in range(numzs):
+for i in range(1,numzs):
     for m in [-1,0,1]:
-        zs.append(dat.z[i] + m * deltaz)
+        zs.append(dat.z[i] - 0.4 * (dat.z[i] - dat.z[i+m]))
         rhos.append((dat.rho[nxcenter3,nycenter3,i]+dat.rho[nxcenter3-1,nycenter3,i]+dat.rho[nxcenter3,nycenter3-1,i]+dat.rho[nxcenter3-1,nycenter3-1,i])/4.0)
 
 plot(zs, rhos)
@@ -280,6 +335,66 @@ xlabel("Z-Dimension (microns)")
 ylim(-40.0, 40.0)
 xlim(0.0,4.0)
 savefig(outputfiledir+"/plots/"+outputfilebase+"_1D_Potentials.pdf")
+
+print "Making 1D potential Plots #2 \n"
+figure()
+
+suptitle("1D Potentials in Storage Region. Grid = %d*%d*%d."%(nxx,nyy,nzz),fontsize = 18)
+subplots_adjust(hspace=0.3, wspace=0.3)
+slicez = 16 * ScaleFactor
+subplot(1,2,1, aspect = 1)
+title("Phi, z = %.2f"%dat.z[slicez])
+levels = linspace(-20.0, 20.0, 21)
+[yy,xx] = meshgrid(dat.y[nymin:nymax],dat.x[nxmin:nxmax])
+contour(xx,yy,dat.phi[nxmin:nxmax,nymin:nymax,slicez],levels,lw=0.1)
+contourf(xx,yy,dat.phi[nxmin:nxmax,nymin:nymax,slicez],levels)
+xlabel("X-Dimension (microns)")
+ylabel("Y-Dimension (microns)")
+plot([dat.x[nxmin+1],dat.x[nxmax-1]],[dat.y[nycenter2],dat.y[nycenter2]],ls = "-", color="k")
+plot([dat.x[nxcenter2],dat.x[nxcenter2]],[dat.y[nymin+1],dat.y[nymax-1]],ls = "-", color="k")
+#colorbar()
+
+subplot(1,2,2)
+title("Phi-Collect Gate, z = %.2f"%dat.z[slicez])
+plot(dat.x[nxmin:nxmax],dat.phi[nxmin:nxmax, nycenter2, slicez], label = "XSlice, y = %.2f"%dat.y[nycenter2])
+plot(dat.y[nymin:nymax],dat.phi[nxcenter2,nymin:nymax, slicez], label = "YSlice, x = %.2f"%dat.x[nxcenter2])
+ylim(-10.0, 20.0)
+xlim(dat.x[nxmin],dat.x[nxmax])
+xlabel("X,Y-Dimension (microns)")
+ylabel("Potential(Volts)")
+legend()
+savefig(outputfiledir+"/plots/"+outputfilebase+"_1D_Potentials_2.pdf")
+
+print "Making 1D potential Plots #3 \n"
+figure()
+
+suptitle("1D Potentials in Isolation Regions. Grid = %d*%d*%d."%(nxx,nyy,nzz),fontsize = 18)
+subplots_adjust(hspace=0.3, wspace=0.3)
+slicez = 16 * ScaleFactor
+nxcenter3 = nxcenter2 + GridsPerPixel * ScaleFactor / 2
+nycenter3 = nycenter2 + GridsPerPixel * ScaleFactor / 2
+subplot(1,2,1, aspect = 1)
+title("Phi, z = %.2f"%dat.z[slicez])
+levels = linspace(-20.0, 20.0, 21)
+[yy,xx] = meshgrid(dat.y[nymin:nymax],dat.x[nxmin:nxmax])
+contour(xx,yy,dat.phi[nxmin:nxmax,nymin:nymax,slicez],levels,lw=0.1)
+contourf(xx,yy,dat.phi[nxmin:nxmax,nymin:nymax,slicez],levels)
+xlabel("X-Dimension (microns)")
+ylabel("Y-Dimension (microns)")
+plot([dat.x[nxmin+1],dat.x[nxmax-1]],[dat.y[nycenter3],dat.y[nycenter3]],ls = "-", color="k")
+plot([dat.x[nxcenter3],dat.x[nxcenter3]],[dat.y[nymin+1],dat.y[nymax-1]],ls = "-", color="k")
+#colorbar()
+
+subplot(1,2,2)
+title("Phi-Collect Gate, z = %.2f"%dat.z[slicez])
+plot(dat.x[nxmin:nxmax],dat.phi[nxmin:nxmax, nycenter3, slicez], label = "XSlice, y = %.2f"%dat.y[nycenter3])
+plot(dat.y[nymin:nymax],dat.phi[nxcenter3,nymin:nymax, slicez], label = "YSlice, x = %.2f"%dat.x[nxcenter3])
+ylim(-10.0, 10.0)
+xlim(dat.x[nxmin],dat.x[nxmax])
+xlabel("X,Y-Dimension (microns)")
+ylabel("Potential(Volts)")
+legend()
+savefig(outputfiledir+"/plots/"+outputfilebase+"_1D_Potentials_3.pdf")
 
 
 print "Making summary plots\n"
@@ -308,16 +423,16 @@ nxmin2 = nxmin - 9 * GridsPerPixel * ScaleFactor / 2
 nymin2 = nymin - 9 * GridsPerPixel * ScaleFactor / 2
 rho0 = dat.rho[nxmin2,nymin2,slicez+1]
 
-title("Log Abs Rho, z = %.2f - %.2f"%(dat.z[nzmin],dat.z[nzmax]))
-levels = linspace(-1.0,1.0,21)
-plotarray = array(log10(abs(dat.rho[nxmin:nxmax,nymin:nymax,nzmin:nzmax].sum(axis=2)/(nzmax-nzmin))))
+title("Rho, z = %.2f - %.2f"%(dat.z[nzmin],dat.z[nzmax]))
+levels = linspace(-10.0,10.0,41)
+plotarray = array(dat.rho[nxmin:nxmax,nymin:nymax,nzmin:nzmax].sum(axis=2)/(nzmax-nzmin))
 contour(xx,yy,plotarray, levels, lw=0.1)
 contourf(xx,yy,plotarray, levels)
 xlabel("X-Dimension (microns)")
 ylabel("Y-Dimension (microns)")
 colorbar()
 
-slicez = 1 * ScaleFactor
+slicez = 8 * ScaleFactor
 subplot(2,2,3, aspect = 1)
 title("Phi, z = %.2f"%dat.z[slicez])
 if EdgePlot:
@@ -332,7 +447,7 @@ plot([dat.x[nxmin+1],dat.x[nxmax-1]],[dat.y[nycenter2],dat.y[nycenter2]],ls = "-
 plot([dat.x[nxcenter2],dat.x[nxcenter2]],[dat.y[nymin+1],dat.y[nymax-1]],ls = "-", color="k")
 colorbar()
 
-slicez = 4 * ScaleFactor
+slicez = 16 * ScaleFactor
 subplot(2,2,4, aspect = 1)
 title("Phi, z = %.2f"%dat.z[slicez])
 contour(xx,yy,dat.phi[nxmin:nxmax,nymin:nymax,slicez],levels,lw=0.1)
@@ -427,9 +542,13 @@ if ConfigData["LogPixels"] == 1:
         xout = float(values[3])
         yout = float(values[4])
         if isnan(xout) or isnan(yout):
+            print "xin = %.3f, yin = %.3f is a nan"
             continue
         pixxout = int(xout/10.0)
-        pixyout = int(yout/10.0)    
+        pixyout = int(yout/10.0)
+
+        if xin>19.5 and xin < 20.5 and yin >19.5 and yin<20.5:
+            print xin, yin, pixxout, pixyout, plottedxin, plottedyin
 
         if (xin > plottedxin - .001) and (xin < plottedxin + .001) and \
            (yin > plottedyin - .001) and (yin < plottedyin + .001):

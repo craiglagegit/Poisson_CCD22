@@ -203,7 +203,7 @@ for ny in range(ScaleFactor*GridsPerPixel-1,nymax-nymin,ScaleFactor*GridsPerPixe
 
 ax1.imshow(log10(transpose(plotarray)), interpolation = 'nearest')
 
-ax2=axes([0.10,0.10,0.50,0.20])
+ax2=axes([0.10,0.20,0.50,0.20])
 ax2.set_title("X-Z Slice")
 ax2.set_xticks([])
 ax2.set_yticks([])
@@ -214,10 +214,18 @@ for nx in [0, 1, 2, nxmax-nxmin-3, nxmax-nxmin-2, nxmax-nxmin-1]:
 
 ax2.imshow(log10(transpose(fliplr(plotarray))), interpolation = 'nearest')
 
-ax3=axes([0.70,0.40,0.20,0.50])
-ax3.set_title("Y-Z Slice")
-ax3.set_xticks([])
-ax3.set_yticks([])
+ax3=axes([0.10,0.10,0.50,0.10])
+ax3.set_title("X-Z Slice")
+plotarray = sum(dat.elec[nxmin:nxmax,nycenter,0:20],axis = 1)
+ax3.plot(dat.x[nxmin:nxmax],plotarray)
+ax3.set_xlabel("X ( Microns)")
+ax3.set_ylabel("Charge Density")
+
+
+ax4=axes([0.60,0.40,0.20,0.50])
+ax4.set_title("Y-Z Slice")
+ax4.set_xticks([])
+ax4.set_yticks([])
 plotarray = sum(dat.elec[:,nymin:nymax,0:20],axis = 0)+0.1
 for ny in [0, 1, 2, nymax-nymin-3, nymax-nymin-2, nymax-nymin-1]:
     #for nz in range(0,dat.Channelkmin):
@@ -225,8 +233,29 @@ for ny in [0, 1, 2, nymax-nymin-3, nymax-nymin-2, nymax-nymin-1]:
     #for nz in range(0,dat.Channelkmin):
     #    plotarray[ny,nz] += 0.001
 
-ax3.imshow(log10(fliplr(plotarray)), interpolation = 'nearest')
-savefig(outputfiledir+"/plots/ChargeDistribution_%d.pdf"%run)
+ax4.imshow(log10(fliplr(plotarray)), interpolation = 'nearest')
+
+ax5=axes([0.80,0.40,0.10,0.50])
+ax5.set_title("Y-Z Slice")
+plotarray = sum(dat.elec[nxcenter,nymin:nymax,0:20],axis = 1)
+ax5.plot(plotarray,dat.y[nymin:nymax])
+ax5.set_xlim(ax5.get_xlim()[::-1])
+ax5.yaxis.tick_right()
+ax5.yaxis.set_label_position("right")
+for tick in ax5.get_xticklabels():
+    tick.set_rotation(90)
+ax5.set_ylabel("Y ( Microns)")
+ax5.set_xlabel("Charge Density")
+
+ax6=axes([0.65,0.25,0.10,0.10])
+ax6.set_title("X-Z Slice")
+plotarray = dat.elec[nxcenter,nycenter,:]
+ax6.plot(dat.z[:],plotarray)
+ax6.set_xlim(ax6.get_xlim()[::-1])
+ax6.set_xticks([0.0,0.5,1.0,1.5,2.0])
+ax6.set_xlabel("Z ( Microns)")
+ax6.set_ylabel("Charge Density")
+savefig(outputfiledir+"/plots/ChargeDistribution_XYZ_%d.pdf"%run)
 close(fig)
 
 
