@@ -2024,7 +2024,7 @@ void MultiGrid::ReadOutputFile(string outputfiledir, string filenamebase, string
     {
       for (j=0; j<array->ny; j++)
 	{
-	  for (k=0; k<array->nx; k++)
+	  for (k=0; k<array->nz; k++)
 	    {
 	      index = i + j * array->nx + k * array->nx * array->ny;
 	      flipped_index = k + j * array->nz + i * array->nz * array->ny;
