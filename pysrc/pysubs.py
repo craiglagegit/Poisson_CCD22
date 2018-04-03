@@ -97,7 +97,7 @@ def ReadConfigFile(filename):
     return config
 
 
-def BuildPlotArray(dat, plotdata, axis, nxmin, nxmax, nymin, nymax, nzmin, nzmax, ZMult, ForceZero, Vph, Vpl, cmap):
+def BuildPlotArray(dat, plotdata, axis, nxmin, nxmax, nymin, nymax, nzmin, nzmax, ZMult, ForceZero, cmap):
     # This builds a 2D array for use with the charge plotting
     plotarray = zeros([nxmax-nxmin+1,nymax-nymin+1])
     dxx = zeros([nxmax-nxmin+1])
@@ -144,12 +144,12 @@ def BuildPlotArray(dat, plotdata, axis, nxmin, nxmax, nymin, nymax, nzmin, nzmax
             if axis == 0:
                 if abs(dat.rho[(nzmin+nzmax)/2,nymin+j,nxmin+i]) < 1.0E-12:
                     plotarray[i,j] = vmax+1.0E6
-                if abs(Vph - dat.phi[(nzmin+nzmax)/2,nymin+j,nxmin+i]) < 1.0E-12 or abs(Vpl - dat.phi[(nzmin+nzmax)/2,nymin+j,nxmin+i]) < 1.0E-12:
+                if abs(dat.phi[(nzmin+nzmax)/2,nymin+j,nxmin+i] - dat.phi[(nzmin+nzmax)/2,nymin+j,0]) < 1.0E-12:
                     plotarray[i,j] = vmin-1.0E6
             elif axis == 1:
                 if abs(dat.rho[nxmin+i, (nzmin+nzmax)/2,nymin+j]) < 1.0E-12:
                     plotarray[i,j] = vmax+100000.0
-                if abs(Vph - dat.phi[nxmin+i,(nzmin+nzmax)/2,nymin+j]) < 1.0E-12 or abs(Vpl - dat.phi[nxmin+i,(nzmin+nzmax)/2,nymin+j]) < 1.0E-12:
+                if abs(dat.phi[nxmin+i,(nzmin+nzmax)/2,nymin+j] - dat.phi[nxmin+i,(nzmin+nzmax)/2,0]) < 1.0E-12:
                     plotarray[i,j] = vmin-1.0E6
     if axis == 0:
         for j in range(nymax-nymin+1):
@@ -361,6 +361,30 @@ def New_BF_Cfg_File(incfgfile, outcfgfile, newrun):
         try:
             if line.split()[0] == 'outputfiledir':
                 lines[i] = 'outputfiledir = '+dirbase[0]+'bfrun_%d\n'%newrun
+        except:
+            continue
+    newcfgfile = open(outcfgfile, 'w')
+    for line in lines:
+        newcfgfile.write(line)
+    newcfgfile.close()
+    return 
+
+def New_Fe55_Cfg_File(incfgfile, outcfgfile, newrun):
+    # This increments the run number to start a new spot
+    # and assigns a random offset value within the central pixel
+    ConfigData = ReadConfigFile(incfgfile)
+    lines = OpenFile(incfgfile)
+    dirbase = ConfigData['outputfiledir'].split('run')
+    newseed = int(2**32 * rand())
+    for i, line in enumerate(lines):
+        try:
+            if line.split()[0] == 'Seed':
+                lines[i] = 'Seed = %d'%newseed
+        except:
+            continue
+        try:
+            if line.split()[0] == 'outputfiledir':
+                lines[i] = 'outputfiledir = '+dirbase[0]+'run_%d\n'%newrun
         except:
             continue
     newcfgfile = open(outcfgfile, 'w')

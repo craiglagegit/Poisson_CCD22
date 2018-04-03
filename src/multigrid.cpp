@@ -23,13 +23,14 @@ MultiGrid::MultiGrid(string inname) //Constructor
   int n, m, m_init = 0;
   time1 = time(NULL);
   //Set the random number seed
-  unsigned int seed = time(NULL);
-  printf("Seed = %d\n",seed);
-  srand48(seed);
 
   // First we read in the configuration information
   ReadConfigurationFile(inname);
   printf("Finished Reading config file\n");
+  unsigned int seed = (unsigned int)Seed;
+  printf("Seed = %d\n",seed);
+  srand48(seed);
+
   // Then, we build the multigrid arrays and set the initial conditions
   phi = new Array3D*[nsteps+1];
   rho = new Array3D*[nsteps+1];
@@ -185,7 +186,11 @@ MultiGrid::MultiGrid(string inname) //Constructor
 	  if (PixelBoundaryTestType == 5)
 	    {
 	      TraceList(m);
-	    }
+	      WriteCollectedCharge(outputfiledir, outputfilebase+underscore+StepNum, "CC");		    }
+	  if (PixelBoundaryTestType == 6)
+	    {
+	      TraceFe55Cloud(m);
+	      WriteCollectedCharge(outputfiledir, outputfilebase+underscore+StepNum, "CC");		    }
 	  // Calculate pixel areas after tracing electrons, if requested.
 	  if (PixelAreas >= 0 && (m % PixelAreas) == 0)
 	    {
@@ -250,7 +255,7 @@ MultiGrid::~MultiGrid() //Destructor
     {
       delete[] QFeLookup;
     }
-      for (n=0; n<NumberofFixedRegions; n++)
+  for (n=0; n<NumberofFixedRegions; n++)
     {
       delete FixedRegionLowerLeft[n];
       delete FixedRegionUpperRight[n];      
@@ -290,7 +295,6 @@ MultiGrid::~MultiGrid() //Destructor
       delete[] PixelQFe;
     }
   return;
-  
 }
 
 void MultiGrid::SaveGrid() {
@@ -538,6 +542,7 @@ void MultiGrid::ReadConfigurationFile(string inname)
   w = GetDoubleParam(inname, "w", 1.9);			// Successive Over-Relaxation factor
   ncycle = GetIntParam(inname, "ncycle", 100);		// Number of SOR cycles at each resolution
   iterations =  GetIntParam(inname, "iterations", 3);	// Number of VCycles
+  Seed =  GetIntParam(inname, "Seed", 77);	// Seed
   NZExp = GetDoubleParam(inname, "NZExp", 10.0);        // Non-linear z axis exponent
   
   // Overall setup
@@ -756,6 +761,12 @@ void MultiGrid::ReadConfigurationFile(string inname)
 	  FringePeriod = GetDoubleParam(inname, "FringePeriod", 0.0);	  
 	  Xoffset = GetDoubleParam(inname, "Xoffset", 0.0);
 	  Yoffset = GetDoubleParam(inname, "Yoffset", 0.0);
+	}
+      if (PixelBoundaryTestType == 6)
+	{
+	  NumElec = GetIntParam(inname, "NumElec", 1620);
+	  Fe55CloudRadius = GetDoubleParam(inname, "Fe55CloudRadius", 0.2);	  
+	  Fe55RepulsionMult = GetDoubleParam(inname, "Fe55RepulsionMult", 1.0);	  
 	}
       
       for (i=0; i<NumberofPixelRegions; i++)
@@ -2385,6 +2396,163 @@ void MultiGrid::TraceFringes(int m)
   return;
 }
 
+void MultiGrid::TraceFe55Cloud(int m)
+{
+  // This generates an Fe55 charge cloud and traces all electrons in the cloud
+  // down to the final pixels.  Mutual repulsion of the electrons in the cloud is included.
+  // Currently only supports ElectronMethod = 2
+  
+  int i, j, n, nn, phase, bottomphase = 4, bottomcount, tracesteps = 0, tracestepsmax = 10000;
+  double mu, E2, Emag, r2, sqrtr2, ve=0.0, vth=0.0, tau=0.0, Tscatt=0.0;
+  double rsq, rcloud, v1, v2, fac, xcenter, ycenter, zcenter;
+  double theta, phiangle, zmin, zmax;
+  double SORChargeFactor =  (QE*MICRON_PER_M/(EPSILON_0*EPSILON_SI));
+  double RepulsionFactor = SORChargeFactor / (4.0 * pi) * Fe55RepulsionMult;
+  zmax = SensorThickness - 5.0;
+  zmin = E[0]->z[Channelkmin] + 2.0 * FieldOxide;
+  double*  E_interp = new double[3];
+  double* r = new double[3]; 
+  double PenetrationDepth = 30.0; // Exponential penetration depth in microns
+  string underscore = "_", slash = "/", name = "Pts";
+  string StepNum = boost::lexical_cast<std::string>(m);
+  string filename = (outputfiledir+slash+outputfilebase+underscore+StepNum+underscore+name+".dat");
+  ofstream file;
+  file.open(filename.c_str());
+  file.setf(ios::fixed);
+  file.setf(ios::showpoint);
+  file.setf(ios::left);
+  file.precision(4);
+  // Write header line.
+  file << setw(8) << "id" << setw(8) << "step" << setw(3) << "ph"
+       << setw(15) << "x" << setw(15) << "y" << setw(15) << "z" << endl;
+
+  // First we generate the initial charge cloud position
+  // Center the cloud somewhere in the center pixel
+  xcenter = (PixelBoundaryUpperRight[0] + PixelBoundaryLowerLeft[0]) / 2.0 ;
+  ycenter = (PixelBoundaryUpperRight[1] + PixelBoundaryLowerLeft[1]) / 2.0;
+  xcenter += PixelSizeX * (0.5 - drand48());
+  ycenter += PixelSizeY * (0.5 - drand48());  
+  // Draw zcenter from an exponential distribution. Keep it in the silicon.
+  zcenter = SensorThickness + PenetrationDepth * log(1.0 - drand48());
+  zcenter = max(zmin, min(zmax, zcenter));
+
+  // Now generate the initial charge cloud
+  phase = 0;
+  double** Cloud = new double*[NumElec];
+  for (n=0; n<NumElec; n++)
+    {
+      Cloud[n] = new double[3];
+      phiangle = 2.0 * pi * drand48();
+      theta = acos(-1.0 + 2.0 * drand48());
+      //  Use Box-Muller algorithm to generate two Gaussian random numbers
+      // Only using one
+      rsq = 1000.0;
+      while (rsq >= 1.0 || rsq == 0.0)
+	{
+	  v1 = 2.0 * drand48() - 1.0;
+	  v2 = 2.0 * drand48() - 1.0;
+	  rsq = v1*v1 + v2 *v2;
+	}
+      fac = sqrt(-2.0 * log(rsq) / rsq);
+      // Choose a radius from  Gaussian distribution and add a random angle
+      rcloud = Fe55CloudRadius * v1 * fac;
+      Cloud[n][0] = xcenter + rcloud * sin(theta) * cos(phiangle);
+      Cloud[n][1] = ycenter + rcloud * sin(theta) * sin(phiangle);
+      Cloud[n][2] = zcenter + rcloud * cos(theta);            
+      // Log initial position.
+      file << setw(8) << n << setw(8) << tracesteps << setw(3) << phase
+	   << setw(15) << Cloud[n][0] << setw(15) << Cloud[n][1] << setw(15) << Cloud[n][2] << endl;
+    }      
+  //Calculate the thermal velocity
+  vth = sqrt(3.0 * KBOLTZMANN * CCDTemperature / ME)  * MICRON_PER_M * DiffMultiplier;
+  vth = vth / sqrt((double)NumDiffSteps);
+
+  // Now trace the cloud down, adding in the mutual repulsion at each step
+  // All electrons trace together
+  phase = 1;
+  bottomcount = 0;
+  while (tracesteps < tracestepsmax && bottomcount < NumElec)
+    {
+      tracesteps += 1;
+      for (n=0; n<NumElec; n++)
+	{
+	  if (Cloud[n][2] < zmin) continue; // This electron has finished
+	  // Get the background field
+	  for (i=0; i<3; i++)
+	    {
+	      E_interp[i] = E[i]->DataInterpolate3D(Cloud[n][0],Cloud[n][1],Cloud[n][2]);
+	    }
+	  // Now add in the mutual repulsion, one electron at a time
+	  for (nn=0; nn<NumElec; nn++)
+	    {
+	      if (n == nn || Cloud[nn][2] < zmin) continue;
+	      // Skip yourself, and anything which has reached the bottom
+	      r2 = 0.0;
+	      for (i=0; i<3; i++)
+		{
+		  r[i] = Cloud[n][i] - Cloud[nn][i];
+		  r2 += r[i] * r[i];
+		}
+	      sqrtr2 = sqrt(r2);
+	      for (i=0; i<3; i++)
+		{
+		  E_interp[i] += r[i] / (r2 * sqrtr2) * RepulsionFactor;
+		}
+	    }
+	  // Now calculate the step as a combination of diffusion and drift
+	  // Just like in Trace().
+	  E2 = 0.0;
+	  for (i=0; i<3; i++)
+	    {
+	      E2 += E_interp[i] * E_interp[i];
+	    }
+	  Emag = max(0.1, sqrt(E2));
+	  mu = mu_Si(Emag * MICRON_PER_CM, CCDTemperature); // Mobility
+	  ve = mu * MICRON_PER_CM * MICRON_PER_CM; // Drift Velocity Factor (Velocity / E)
+	  tau  = ME / QE * mu * METER_PER_CM * METER_PER_CM; // scattering time
+	  Tscatt = -tau * log(1.0 - drand48()) * (double)NumDiffSteps;
+	  phiangle = 2.0 * pi * drand48();
+	  theta = acos(-1.0 + 2.0 * drand48());
+	  Cloud[n][0] += (vth * sin(theta) * cos(phiangle) + E_interp[0] * ve) * Tscatt;
+	  Cloud[n][1] += (vth * sin(theta) * sin(phiangle) + E_interp[1] * ve) * Tscatt;
+	  Cloud[n][2] += (vth * cos(theta) + E_interp[2] * ve) * Tscatt;
+	  if(LogPixelPaths == 1) 
+	    {
+	      // Log latest position update.
+	      file << setw(8) << n << setw(8) << tracesteps << setw(3) << phase
+		   << setw(15) << Cloud[n][0] << setw(15) << Cloud[n][1] << setw(15) << Cloud[n][2] << endl;
+	    }
+	  if (Cloud[n][2] < zmin)
+	    {
+	      bottomcount += 1;
+	      // Find the pixel the charge is in and add 1 electron to it.
+	      int PixX = (int)floor((Cloud[n][0] - PixelBoundaryLowerLeft[0]) / PixelSizeX);
+	      int PixY = (int)floor((Cloud[n][1] - PixelBoundaryLowerLeft[1]) / PixelSizeY);
+	      j = PixX + PixelBoundaryNx * PixY;
+	      if (j >= 0 && j < PixelBoundaryNx * PixelBoundaryNy)   CollectedCharge[0][j] += 1;
+	      if (VerboseLevel > 1)
+		{
+		  printf("In TraceFe55Cloud. Electron %d finished in Pixel (%d, %d)\n",n,PixX,PixY);
+		}
+		// Log the last position update.
+	      file << setw(8) << n << setw(8) << tracesteps << setw(3) << bottomphase
+		   << setw(15) << Cloud[n][0] << setw(15) << Cloud[n][1] << setw(15) << Cloud[n][2] << endl;
+	    }
+	} // ends n
+    } // ends tracesteps
+  file.close();
+  printf("Finished writing grid file - %s\n",filename.c_str());
+  fflush(stdout);
+  
+  for (n=0; n<NumElec; n++)
+    {
+      delete[] Cloud[n];
+    }
+  delete[] Cloud;
+  delete[] E_interp;  
+  delete[] r;  
+  return;
+}
 
 void MultiGrid::TraceList(int m)
 {

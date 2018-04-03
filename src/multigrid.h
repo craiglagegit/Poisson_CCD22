@@ -42,6 +42,7 @@ class MultiGrid
   double w;		// Successive Over-Relaxation factor
   int ncycle;		// Number of SOR cycles at each resolution
   int iterations;	// Number of VCycles
+  int Seed;
   double NZExp;		// Non-linear z axis exponent
   
   int ScaleFactor;       // Power of 2 that sets the grid size
@@ -158,6 +159,8 @@ class MultiGrid
   double* PixelBoundaryLowerLeft;
   double* PixelBoundaryUpperRight;
   double* PixelBoundaryStepSize;
+  double Fe55CloudRadius;
+  double Fe55RepulsionMult;
 
   int PixelBoundaryNx;
   int PixelBoundaryNy;
@@ -248,6 +251,7 @@ class MultiGrid
   void TraceFringes(int);  
   void TraceGrid(int);
   void TraceRegion(int);
+  void TraceFe55Cloud(int);  
   void FindEdge(double*, double, ofstream&);
   void FindCorner(double*, double*, ofstream&);
   void CalculatePixelAreas(int);
