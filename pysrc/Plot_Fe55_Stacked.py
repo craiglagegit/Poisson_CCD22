@@ -59,23 +59,17 @@ sigmaxs = zeros([NumRuns])
 sigmays = zeros([NumRuns])
 
 for run in range(NumRuns):
-    spotlist = Array2dSet(stampxmin,stampxmax,Nx,stampymin,stampymax,Ny,NumSpots)
+    spotlist = Array2dSet(stampxmin,stampxmax,Nx,stampymin,stampymax,Ny,1)
     for spot in range(NumSpots):
         filename = dirbase+'run_%d/%s_%d_CC.dat'%(spot,outputfilebase,run)
         elec = ReadCCFile(filename, Nx, Ny)
         cfgfile = dirbase+'run_%d/pixel.cfg'%spot
         SpotConfigData = ReadConfigFile(cfgfile)
-        xsum = 0.0
-        ysum = 0.0
-        elecsum = 0.0
         for i in range(Nx):
             for j in range(Ny):
-                spotlist.data[i,j,spot] = elec[i,j]
-                elecsum += elec[i,j]
-                xsum = spotlist.x[i] * elec[i,j]
-                ysum = spotlist.y[j] * elec[i,j]
-        spotlist.xoffset[spot] = xsum / elecsum
-        spotlist.yoffset[spot] = ysum / elecsum
+                spotlist.data[i,j,0] += elec[i,j]
+        spotlist.xoffset[0] = 0.0
+        spotlist.yoffset[0] = 0.0
 
     # Now run the forward modeling
     param0 = [1.00, 1.00]
@@ -133,7 +127,7 @@ xlim(spotlist.ymin, spotlist.ymax)
 legend(loc='center right')
 text(-2.0,AveCounts[xindex,yindex] * 0.70, "SigmaY = %.4f"%sigmays[0], fontsize=16, color='blue')
 subplots_adjust(wspace=0.5)
-savefig(outputfiledir+"/plots/Fe55_Sim_%d.pdf"%(NumSpots))
+savefig(outputfiledir+"/plots/Fe55_Stacked_Sim_%d.pdf"%(NumSpots))
 
 
 figure()
@@ -158,5 +152,5 @@ text(spotlist.x[Nx-1] + 1.2, spotlist.y[yindex] - 0.25, "Gaussian Fit", color = 
 text(spotlist.x[Nx-1] + 1.2, spotlist.y[yindex] - 0.55, "$\sigma_x$=%.3f"%sigmaxs[0],color = 'red') 
 text(spotlist.x[Nx-1] + 1.2, spotlist.y[yindex] - 0.85, "$\sigma_y$=%.3f"%sigmays[0],color = 'red') 
 
-savefig(outputfiledir+"/plots/Fe55_AveCounts_%d.pdf"%NumSpots)
+savefig(outputfiledir+"/plots/Fe55_Stacked_AveCounts_%d.pdf"%NumSpots)
 

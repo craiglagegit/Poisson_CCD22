@@ -160,7 +160,8 @@ class MultiGrid
   double* PixelBoundaryUpperRight;
   double* PixelBoundaryStepSize;
   double Fe55CloudRadius;
-  double Fe55RepulsionMult;
+  double Fe55ElectronMult;
+  double Fe55HoleMult;
 
   int PixelBoundaryNx;
   int PixelBoundaryNy;
