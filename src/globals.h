@@ -14,7 +14,7 @@
 #define min(x,y) (x>y?y:x)      // min macro definition
 
 #define QE             1.6E-19  // Electron charge in Coulombs
-#define ME             9.11E-31 // Electron effective mass (approx = 1 in Si)
+#define ME             9.11E-31 // Electron effective mass (approx = 1.0 in Si)
 #define KBOLTZMANN     1.38E-23 // Boltzmann constant in Joules / Kelvin
 #define EPSILON_0      8.85E-12 // Permittivity of free space in Farads / meter
 #define EPSILON_SI     11.7     // Dielectric constant of silicon

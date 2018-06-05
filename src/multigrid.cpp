@@ -2153,7 +2153,8 @@ void MultiGrid::Trace(double* point, int bottomsteps, bool savecharge, double bo
     }
   Emag = max(0.1, sqrt(E2));
   mu = mu_Si(Emag * MICRON_PER_CM, CCDTemperature); // Mobility
-  vth = sqrt(3.0 * KBOLTZMANN * CCDTemperature / ME)  * MICRON_PER_M * DiffMultiplier; // Thermal Velocity
+  // Thermal Velocity - 0.27 factor from Green, 1990
+  vth = sqrt(8.0 * KBOLTZMANN * CCDTemperature / (ME * 0.27 * pi))  * MICRON_PER_M * DiffMultiplier; 
   vth = vth / sqrt((double)NumDiffSteps);
   tau  = ME / QE * mu * METER_PER_CM * METER_PER_CM; // scattering time
 
@@ -2403,7 +2404,7 @@ void MultiGrid::TraceFe55Cloud(int m)
   // down to the final pixels.  Mutual repulsion of the electrons in the cloud is included.
   // Currently only supports ElectronMethod = 2
   
-  int i, j, n, nn, phase, bottomphase = 4, bottomcount, topcount, tracesteps = 0, tracestepsmax = 4000;
+  int i, j, n, nn, phase, bottomphase = 4, bottomcount, topcount, tracesteps = 0, tracestepsmax = 10000;
   double mu, E2, Emag, r2, sqrtr2, ve=0.0, vth=0.0, tau=0.0, Tscatt=0.0;
   double rsq, rcloud, v1, v2, fac, xcenter, ycenter, zcenter;
   double theta, phiangle, zmin, zmax;
@@ -2494,7 +2495,8 @@ void MultiGrid::TraceFe55Cloud(int m)
 	   << setw(15) << Hcloud[n][0] << setw(15) << Hcloud[n][1] << setw(15) << Hcloud[n][2] << endl;
     }      
   //Calculate the thermal velocity
-  vth = sqrt(3.0 * KBOLTZMANN * CCDTemperature / ME)  * MICRON_PER_M * DiffMultiplier;
+  // Thermal Velocity - 0.27 factor from Green, 1990
+  vth = sqrt(8.0 * KBOLTZMANN * CCDTemperature / (ME * 0.27 * pi))  * MICRON_PER_M * DiffMultiplier; 
   vth = vth / sqrt((double)NumDiffSteps);
 
   // Now trace the cloud down, adding in the mutual repulsion at each step
