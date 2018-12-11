@@ -31,3 +31,6 @@ Updates - 13Oct17:
 * The Xoffset and Yoffset are now added to the initial fringe electron positions.
 
 * Added code which deals with electrons which reach the top of the silicon (where the light comes in).  An electron which reaches here is reflected, with some probability of absorption, which is set by the parameter TopAbsorptionProb.  Default value is 0.0.
+
+Acknowledgements:
+This research was supported by DOE grant DE-SC0009999 and NSF/AURA grant N56981C.
