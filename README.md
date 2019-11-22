@@ -1,3 +1,8 @@
+*** This is no longer the most up-to-date code.  ***
+Users should move to the master branch at https://github.com/craiglagegit/Poisson_CCD, which is more recent and has a larger suite of example configuration files.
+
+********************************************************************************************************
+
 # Poisson_CCD22 - 'hole20' branch
 Poisson solver for LSST CCDs
 Description of stand-alone Poisson solver.
